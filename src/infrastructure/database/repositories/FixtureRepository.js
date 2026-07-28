@@ -136,6 +136,16 @@ export function createFixtureRepository({ poolManager }) {
       return mapFixtureRow(rows[0])
     },
 
+    async findFixtureByProviderId(providerId) {
+      const pool = poolManager.getPool()
+      const [rows] = await pool.query(
+        `${FIXTURE_SELECT} WHERE f.provider_id = ? LIMIT 1`,
+        [providerId]
+      )
+
+      return mapFixtureRow(rows[0])
+    },
+
     async listCompletedFixturesByCompetition({ competitionId }) {
       const pool = poolManager.getPool()
       const [rows] = await pool.query(

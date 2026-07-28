@@ -77,7 +77,8 @@ export function createEvaluateHistoricalModelUseCase({
             prediction: entry.prediction,
             fixture: entry.fixture
           }),
-          prediction: entry.prediction.probabilities
+          prediction: entry.prediction.probabilities,
+          dataQualityStatus: entry.prediction.dataQuality.status
         })
       }
     }

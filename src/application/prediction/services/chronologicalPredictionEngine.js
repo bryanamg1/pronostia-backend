@@ -176,6 +176,15 @@ function buildFixturePrediction(state, fixture, now) {
     config: state.config,
     ratingResolver: (teamId) => getRating(state, teamId, fixture)
   })
+  const latestHomeFixture = homeTeamState.fixtures.at(-1) || null
+  const latestAwayFixture = awayTeamState.fixtures.at(-1) || null
+  const latestSampleAt = [
+    latestHomeFixture?.kickoffAt,
+    latestAwayFixture?.kickoffAt
+  ]
+    .filter(Boolean)
+    .sort()
+    .at(-1)
   const dataQuality = assessPredictionDataQuality({
     fixture,
     homeSampleSize: homeTeamState.matches,
@@ -183,7 +192,9 @@ function buildFixturePrediction(state, fixture, now) {
     homeVenueSampleSize: homeTeamState.homeMatches,
     awayVenueSampleSize: awayTeamState.awayMatches,
     leagueMatchCount: leagueState.matches,
-    config: state.config
+    config: state.config,
+    referenceDate: fixture.kickoffAt,
+    latestSampleAt
   })
   const leagueAverages = {
     homeGoals: safeDivide(leagueState.homeGoals, leagueState.matches, 1.4),

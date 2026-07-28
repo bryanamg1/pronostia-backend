@@ -4,6 +4,7 @@ import { createGetHealthStatusUseCase } from '../application/system/getHealthSta
 import { createGetReadinessStatusUseCase } from '../application/system/getReadinessStatus.js'
 import { createEvaluateHistoricalModelUseCase } from '../application/prediction/useCases/evaluateHistoricalModel.js'
 import { createGenerateHistoricalPredictionUseCase } from '../application/prediction/useCases/generateHistoricalPrediction.js'
+import { createImportHistoricalSeasonUseCase } from '../application/sports/importHistoricalSeason.js'
 import { createRunScheduledSystemCheckUseCase } from '../application/system/runScheduledSystemCheck.js'
 import { createGetFixtureByIdUseCase } from '../application/sports/getFixtureById.js'
 import { createListCompetitionsUseCase } from '../application/sports/listCompetitions.js'
@@ -94,6 +95,14 @@ export function createDependencies({ env, loggerOverride } = {}) {
   const listCompetitions = createListCompetitionsUseCase({
     competitionRepository
   })
+  const importHistoricalSeason = createImportHistoricalSeasonUseCase({
+    logger: loggerHandle.logger,
+    env,
+    competitionRepository,
+    teamRepository,
+    fixtureRepository,
+    sportsSyncStateRepository
+  })
   const listTodayFixtures = createListTodayFixturesUseCase({
     fixtureRepository,
     lookaheadHours: env.sports.sync.lookaheadHours,
@@ -138,6 +147,7 @@ export function createDependencies({ env, loggerOverride } = {}) {
       runScheduledSystemCheck,
       syncSportsData,
       runScheduledSportsSync,
+      importHistoricalSeason,
       listCompetitions,
       listTodayFixtures,
       getFixtureById,

@@ -92,6 +92,21 @@ export function createCompetitionRepository({ poolManager }) {
       )
 
       return mapCompetitionRow(rows[0])
+    },
+
+    async findCompetitionByProviderIdAndSeason({ providerId, season }) {
+      const pool = poolManager.getPool()
+      const [rows] = await pool.query(
+        `
+          SELECT *
+          FROM competitions
+          WHERE provider_id = ? AND season = ?
+          LIMIT 1
+        `,
+        [providerId, season]
+      )
+
+      return mapCompetitionRow(rows[0])
     }
   }
 }

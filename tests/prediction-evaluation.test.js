@@ -4,6 +4,45 @@ import { createGenerateHistoricalPredictionUseCase } from '../src/application/pr
 import { createPredictionHistoricalFixtures } from './fixtures/predictionHistoricalFixtures.js'
 
 describe('historical prediction engine and use cases', () => {
+  function createLargeHistoricalFixtureSet(totalFixtures = 140) {
+    const competition = {
+      id: 39,
+      targetKey: 'premier-league',
+      providerId: 39,
+      name: 'Premier League',
+      country: 'England',
+      season: 2024
+    }
+    const teams = Array.from({ length: 20 }, (_, index) => ({
+      id: 1000 + index,
+      providerId: 1000 + index,
+      name: `Team ${index + 1}`,
+      logoUrl: null
+    }))
+
+    return Array.from({ length: totalFixtures }, (_, index) => {
+      const homeTeam = teams[index % teams.length]
+      const awayTeam = teams[(index + 7) % teams.length]
+
+      return {
+        id: index + 1,
+        providerId: 2000 + index,
+        kickoffAt: new Date(
+          Date.UTC(2024, 7, 1 + index, 12, 0, 0)
+        ).toISOString(),
+        status: 'FT',
+        homeGoals: (index + 2) % 4,
+        awayGoals: index % 3,
+        rawSourceUpdatedAt: new Date(
+          Date.UTC(2024, 7, 1 + index, 14, 0, 0)
+        ).toISOString(),
+        competition,
+        homeTeam,
+        awayTeam
+      }
+    })
+  }
+
   test('sorts fixtures chronologically and prevents future leakage', () => {
     const fixtures = createPredictionHistoricalFixtures()
     const engine = createChronologicalPredictionEngine({
@@ -118,6 +157,56 @@ describe('historical prediction engine and use cases', () => {
     expect(result.metrics.accuracy1X2).toBeGreaterThanOrEqual(0)
     expect(result.metrics.coverage).toBeGreaterThan(0)
     expect(persistedPredictions.size).toBe(result.metrics.fixturesEvaluated)
+  })
+
+  test('supports evaluations with more than 100 fixtures after warm-up', async () => {
+    const fixtures = createLargeHistoricalFixtureSet(140)
+    const evaluationUseCase = createEvaluateHistoricalModelUseCase({
+      competitionRepository: {
+        async findCompetitionByTargetKeyAndSeason() {
+          return fixtures[0].competition
+        }
+      },
+      fixtureRepository: {
+        async listCompletedFixturesByCompetition() {
+          return fixtures
+        }
+      },
+      modelVersionRepository: {
+        async upsertModelVersion(payload) {
+          return {
+            id: 1,
+            ...payload
+          }
+        }
+      },
+      historicalPredictionRepository: {
+        async upsertHistoricalPrediction(payload) {
+          return payload
+        }
+      },
+      modelEvaluationRepository: {
+        async upsertModelEvaluation(payload) {
+          return payload
+        }
+      },
+      modelConfig: {
+        evaluation: {
+          minFixturesForEvaluation: 20,
+          minSamplesPerTeam: 1
+        }
+      },
+      now: () => new Date('2026-07-28T00:00:00.000Z')
+    })
+
+    const result = await evaluationUseCase({
+      competitionKey: 'premier-league',
+      season: 2024
+    })
+
+    expect(result.status).toBe('ok')
+    expect(result.metrics.fixturesEvaluated).toBeGreaterThanOrEqual(100)
+    expect(result.metrics.coverage).toBeGreaterThan(0.7)
   })
 
   test('returns an explicit block when persisted history is insufficient', async () => {

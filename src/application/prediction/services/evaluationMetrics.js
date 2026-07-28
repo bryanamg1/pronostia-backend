@@ -39,6 +39,26 @@ function calculateBinaryBrier(probability, actual) {
   return (probability - actual) ** 2
 }
 
+function bucketizeProbability(probability) {
+  if (probability < 0.2) {
+    return '0.00-0.19'
+  }
+
+  if (probability < 0.4) {
+    return '0.20-0.39'
+  }
+
+  if (probability < 0.6) {
+    return '0.40-0.59'
+  }
+
+  if (probability < 0.8) {
+    return '0.60-0.79'
+  }
+
+  return '0.80-1.00'
+}
+
 function calculateLogLoss(probability) {
   const boundedProbability = Math.min(Math.max(probability, 1e-15), 1 - 1e-15)
   return -Math.log(boundedProbability)
@@ -91,6 +111,25 @@ export function summarizeEvaluationResults({ evaluations, excludedFixtures }) {
       accumulator.homeWinProbabilitySum += evaluation.prediction.homeWin
       accumulator.drawProbabilitySum += evaluation.prediction.draw
       accumulator.awayWinProbabilitySum += evaluation.prediction.awayWin
+      const topProbability = Math.max(
+        evaluation.prediction.homeWin,
+        evaluation.prediction.draw,
+        evaluation.prediction.awayWin
+      )
+      const topBucket = bucketizeProbability(topProbability)
+      const overBucket = bucketizeProbability(evaluation.prediction.over25)
+      const bttsBucket = bucketizeProbability(evaluation.prediction.bttsYes)
+
+      accumulator.probabilityBuckets.oneXTwo[topBucket] =
+        (accumulator.probabilityBuckets.oneXTwo[topBucket] || 0) + 1
+      accumulator.probabilityBuckets.over25[overBucket] =
+        (accumulator.probabilityBuckets.over25[overBucket] || 0) + 1
+      accumulator.probabilityBuckets.bttsYes[bttsBucket] =
+        (accumulator.probabilityBuckets.bttsYes[bttsBucket] || 0) + 1
+
+      const dataQualityStatus = evaluation.dataQualityStatus || 'UNKNOWN'
+      accumulator.dataQuality[dataQualityStatus] =
+        (accumulator.dataQuality[dataQualityStatus] || 0) + 1
       return accumulator
     },
     {
@@ -103,7 +142,13 @@ export function summarizeEvaluationResults({ evaluations, excludedFixtures }) {
       brierBtts: 0,
       homeWinProbabilitySum: 0,
       drawProbabilitySum: 0,
-      awayWinProbabilitySum: 0
+      awayWinProbabilitySum: 0,
+      probabilityBuckets: {
+        oneXTwo: {},
+        over25: {},
+        bttsYes: {}
+      },
+      dataQuality: {}
     }
   )
 
@@ -134,6 +179,8 @@ export function summarizeEvaluationResults({ evaluations, excludedFixtures }) {
         0
       )
     },
+    probabilityBuckets: totals.probabilityBuckets,
+    dataQualityDistribution: totals.dataQuality,
     excludedReasons: excludedFixtures.reduce((accumulator, fixture) => {
       accumulator[fixture.reason] = (accumulator[fixture.reason] || 0) + 1
       return accumulator

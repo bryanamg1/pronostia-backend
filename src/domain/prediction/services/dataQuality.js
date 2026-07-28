@@ -12,6 +12,8 @@ export function assessPredictionDataQuality({
   awayVenueSampleSize,
   leagueMatchCount,
   config,
+  referenceDate = fixture.kickoffAt,
+  latestSampleAt = null,
   temporalLeakageDetected = false
 }) {
   const flags = []
@@ -32,11 +34,15 @@ export function assessPredictionDataQuality({
     flags.push(DATA_QUALITY_FLAGS.MISSING_COMPETITION_AVERAGES)
   }
 
-  const kickoffAt = new Date(fixture.kickoffAt)
-  const stalenessMs = Date.now() - kickoffAt.getTime()
+  const referenceTimeMs = Date.parse(referenceDate)
+  const latestSampleTimeMs = latestSampleAt ? Date.parse(latestSampleAt) : null
   const maxAgeMs = config.evaluation.staleWindowDays * 24 * 60 * 60 * 1000
 
-  if (stalenessMs > maxAgeMs) {
+  if (
+    Number.isFinite(referenceTimeMs) &&
+    Number.isFinite(latestSampleTimeMs) &&
+    referenceTimeMs - latestSampleTimeMs > maxAgeMs
+  ) {
     flags.push(DATA_QUALITY_FLAGS.STALE_INPUT)
   }
 
