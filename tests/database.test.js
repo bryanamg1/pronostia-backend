@@ -1,5 +1,8 @@
 import { createMySqlPoolManager } from '../src/infrastructure/database/mysql/createMySqlPoolManager.js'
-import { runMigrationCommand } from '../src/infrastructure/database/migrations/cli.js'
+import {
+  runMigrationCommand,
+  sanitizeMigrationErrorMessage
+} from '../src/infrastructure/database/migrations/cli.js'
 import { createTestLogger } from './helpers/createTestLogger.js'
 
 describe('database foundation', () => {
@@ -49,5 +52,130 @@ describe('database foundation', () => {
     expect(result.databaseConfigured).toBe(false)
     expect(result.pending).toContain('20260728_001_create_system_runs')
     expect(writes).not.toHaveLength(0)
+  })
+
+  test('database ping reports a down database without exposing credentials', async () => {
+    const { logger, entries } = createTestLogger()
+    let createPoolCalls = 0
+    const poolManager = createMySqlPoolManager({
+      config: {
+        configured: true,
+        host: 'localhost',
+        port: 3306,
+        user: 'root',
+        password: 'secret',
+        name: 'pronostia'
+      },
+      logger,
+      createPool() {
+        createPoolCalls += 1
+
+        return {
+          async query() {
+            throw new Error(
+              'connect ECONNREFUSED localhost:3306 password=secret'
+            )
+          },
+          async end() {}
+        }
+      }
+    })
+
+    const readiness = await poolManager.ping()
+
+    expect(createPoolCalls).toBe(1)
+    expect(readiness.ready).toBe(false)
+    expect(readiness.checks.database.status).toBe('error')
+    expect(JSON.stringify(entries)).not.toContain('secret')
+  })
+
+  test('migration runner reports already applied migrations and remains idempotent', async () => {
+    const { logger } = createTestLogger()
+    const writes = []
+    const appliedIds = new Set()
+    const executedStatements = []
+
+    const fakePool = {
+      async query(sql, params = []) {
+        executedStatements.push(sql)
+
+        if (sql.includes('CREATE TABLE IF NOT EXISTS schema_migrations')) {
+          return [[], []]
+        }
+
+        if (sql.includes('SELECT id FROM schema_migrations')) {
+          return [[...appliedIds].map((id) => ({ id })), []]
+        }
+
+        if (sql.includes('INSERT INTO schema_migrations')) {
+          appliedIds.add(params[0])
+          return [[], []]
+        }
+
+        if (sql.includes('CREATE TABLE IF NOT EXISTS system_runs')) {
+          return [[], []]
+        }
+
+        throw new Error(`Unexpected SQL: ${sql}`)
+      }
+    }
+
+    const poolManager = {
+      hasConfig: () => true,
+      getPool: () => fakePool
+    }
+
+    const firstRun = await runMigrationCommand({
+      command: 'up',
+      poolManager,
+      logger,
+      stdout: {
+        write(value) {
+          writes.push(value)
+        }
+      }
+    })
+
+    const secondRun = await runMigrationCommand({
+      command: 'up',
+      poolManager,
+      logger,
+      stdout: {
+        write(value) {
+          writes.push(value)
+        }
+      }
+    })
+
+    const status = await runMigrationCommand({
+      command: 'status',
+      poolManager,
+      logger,
+      stdout: {
+        write(value) {
+          writes.push(value)
+        }
+      }
+    })
+
+    expect(firstRun.appliedNow).toContain('20260728_001_create_system_runs')
+    expect(secondRun.appliedNow).toEqual([])
+    expect(status.applied).toContain('20260728_001_create_system_runs')
+    expect(status.pending).toEqual([])
+    expect(
+      executedStatements.filter((statement) =>
+        statement.includes('CREATE TABLE IF NOT EXISTS system_runs')
+      )
+    ).toHaveLength(1)
+    expect(writes.length).toBeGreaterThan(0)
+  })
+
+  test('migration errors are sanitized before being reported', () => {
+    const sanitized = sanitizeMigrationErrorMessage(
+      'Access denied using password: secret and mysql://root:secret@localhost:3306/pronostia'
+    )
+
+    expect(sanitized).not.toContain('secret')
+    expect(sanitized).toContain('[REDACTED]')
   })
 })

@@ -3,6 +3,12 @@ import { createLogger } from '../../logging/createLogger.js'
 import { createMySqlPoolManager } from '../mysql/createMySqlPoolManager.js'
 import { migrations } from './migrations.js'
 
+export function sanitizeMigrationErrorMessage(message = '') {
+  return message
+    .replace(/password:\s*[^)\r\n]+/gi, 'password: [REDACTED]')
+    .replace(/\/\/([^:@\s]+):([^@\/\s]+)@/g, '//[REDACTED]:[REDACTED]@')
+}
+
 async function ensureMigrationsTable(pool) {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -116,7 +122,16 @@ async function main() {
 
 if (process.argv[1]?.endsWith('cli.js')) {
   main().catch((error) => {
-    process.stderr.write(`${error.message}\n`)
+    process.stderr.write(
+      `${JSON.stringify(
+        {
+          code: 'MIGRATION_COMMAND_FAILED',
+          message: sanitizeMigrationErrorMessage(error.message)
+        },
+        null,
+        2
+      )}\n`
+    )
     process.exitCode = 1
   })
 }

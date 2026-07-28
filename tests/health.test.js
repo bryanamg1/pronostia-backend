@@ -80,4 +80,35 @@ describe('health endpoints', () => {
     expect(response.body.success).toBe(true)
     expect(response.body.data.checks.database.status).toBe('ok')
   })
+
+  test('/api/health/ready returns 503 when readiness is down', async () => {
+    const { logger } = createTestLogger()
+    const app = createApp({
+      env: createTestEnv(),
+      logger,
+      getHealthStatus: () => ({
+        status: 'ok',
+        service: 'pronostia-backend',
+        timestamp: '2026-07-28T00:00:00.000Z',
+        environment: 'test'
+      }),
+      getReadinessStatus: async () => ({
+        status: 'error',
+        service: 'pronostia-backend',
+        timestamp: '2026-07-28T00:00:00.000Z',
+        environment: 'test',
+        checks: {
+          database: {
+            status: 'error'
+          }
+        }
+      })
+    })
+
+    const response = await request(app).get('/api/health/ready')
+
+    expect(response.status).toBe(503)
+    expect(response.body.success).toBe(true)
+    expect(response.body.data.checks.database.status).toBe('error')
+  })
 })

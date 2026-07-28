@@ -63,7 +63,7 @@ export function createMySqlPoolManager({
       }
     } catch (error) {
       logger.error('Database readiness failed', {
-        error: error.message
+        error
       })
 
       return {
