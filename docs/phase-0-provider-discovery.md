@@ -90,6 +90,20 @@ Validar si API-Football puede sostener el MVP de PronostIA sin acoplar la arquit
   - plan observado: `Free`;
   - consumo observado: `10/100` requests;
   - causa de fallo observada en la validacion inicial: `HTTP 429` por limite de requests por minuto.
+- Evidencia empirica local posterior al ajuste de pacing:
+  - smoke test completado con `5` llamadas HTTP;
+  - intervalos observados entre llamadas: aproximadamente `7001-7011 ms`;
+  - cero respuestas `HTTP 429`;
+  - clave redactada correctamente en logs;
+  - checkpoint local creado;
+  - pasos guardados en checkpoint:
+    - `seasons`;
+    - `bookmakers`;
+    - `bets`;
+  - catalogo de `/odds/bookmakers`: `32` bookmakers;
+  - `/odds/bets`: `338` registros;
+  - Bet365 listado en el catalogo general;
+  - Betano listado en el catalogo general.
 - El pricing publico muestra:
   - Free: `100 requests/day`
   - Pro: `7,500 requests/day`
@@ -180,6 +194,65 @@ Resumen actual:
   - documentar no-go para operacion diaria completa sobre free plan;
   - promover decision humana entre upgrade a Pro o ajuste de alcance.
 
+## Observabilidad de cuota
+
+Fuente primaria:
+
+- cuerpo del endpoint `/status`, usando:
+  - `response.subscription.plan`
+  - `response.requests.current`
+  - `response.requests.limit_day`
+
+Fuente secundaria:
+
+- headers sanitizados de respuesta, especialmente:
+  - `x-ratelimit-requests-limit`
+  - `x-ratelimit-requests-remaining`
+
+Reglas:
+
+- no usar headers como unica fuente de cuota diaria;
+- mantener contador local de llamadas HTTP emitidas;
+- clasificar la observacion como `EVENTUAL_OR_INCONSISTENT` si `/status` no refleja inmediatamente el consumo o si los headers no son monotonicamente decrecientes;
+- calcular de forma conservadora:
+
+```text
+effectiveEstimatedRemaining =
+min(
+  remaining reportado o derivado del estado conocido,
+  knownDailyLimit - (knownCurrentUsage + locallyEstimatedConsumption)
+)
+```
+
+- `quotaConfidence`:
+  - `HIGH`: datos del cuerpo consistentes con el consumo observado;
+  - `MEDIUM`: datos del cuerpo validos pero con comportamiento eventual o headers inconsistentes;
+  - `LOW`: falta algun dato del cuerpo y se requiere apoyo de headers.
+
+## Bookmakers: catalogo vs disponibilidad real
+
+Debe distinguirse entre:
+
+1. presencia en `/odds/bookmakers`;
+2. disponibilidad real para un fixture;
+3. disponibilidad real para una competicion concreta;
+4. disponibilidad para los mercados MVP.
+
+Estado actual confirmado:
+
+- Bet365:
+  - `catalogListed = true`
+  - `fixtureAvailability = INCONCLUSIVE`
+  - `competitionAvailability = INCONCLUSIVE`
+  - `mvpMarketAvailability = INCONCLUSIVE`
+- Betano:
+  - `catalogListed = true`
+  - `fixtureAvailability = INCONCLUSIVE`
+  - `competitionAvailability = INCONCLUSIVE`
+  - `mvpMarketAvailability = INCONCLUSIVE`
+
+No deben marcarse como totalmente verificados hasta consultar cuotas reales por fixture.
+
 ## Riesgos tecnicos confirmados
 
 - El plan free de `100 requests/day` es estrecho para una corrida diaria de hasta 40 partidos si se consulta estadistica de equipos y odds sin cache historica fuerte.
@@ -192,7 +265,7 @@ Resumen actual:
 
 - La credencial ya no es el bloqueo principal.
 - El bloqueo actual es operativo:
-  - falta completar la validacion autentica con pacing secuencial y checkpoint local;
+  - falta ejecutar el preflight sin red y, si resulta seguro, la validacion autentica completa con pacing secuencial;
   - siguen pendientes:
     - ids verificados;
     - temporadas verificadas;
@@ -229,6 +302,7 @@ No existe decision final de go/no-go todavia porque faltan pruebas autenticadas 
 node .\scripts\discovery\estimate-request-budget.js
 node .\scripts\discovery\validate-api-football.js
 DISCOVERY_SMOKE_TEST=true SPORTS_API_MIN_INTERVAL_MS=7000 node .\scripts\discovery\validate-api-football.js
+DISCOVERY_DRY_RUN=true node .\scripts\discovery\validate-api-football.js
 ```
 
 ## Evidencia operativa y controles agregados
@@ -241,7 +315,52 @@ DISCOVERY_SMOKE_TEST=true SPORTS_API_MIN_INTERVAL_MS=7000 node .\scripts\discove
 - Maximo de dos reintentos ante `HTTP 429`.
 - Checkpoint local ignorado por Git para no repetir pasos exitosos.
 - `DISCOVERY_SMOKE_TEST=true` para modo reducido.
+- `DISCOVERY_DRY_RUN=true` para preflight sin llamadas externas.
 - Tests simulados con `node:test`, sin consumo de API real.
+
+## Formato de salida relevante
+
+### Estado parseado del proveedor
+
+```json
+{
+  "plan": "Free",
+  "current": 10,
+  "limitDay": 100,
+  "remaining": 90,
+  "warnings": []
+}
+```
+
+### Observabilidad de cuota
+
+```json
+{
+  "statusCurrentInitial": 10,
+  "statusCurrentFinal": 10,
+  "observedStatusDelta": 0,
+  "headerRemainingObservations": [90, 88, 87, 89, 90],
+  "locallyEstimatedConsumption": 5,
+  "quotaObservationStatus": "EVENTUAL_OR_INCONSISTENT",
+  "quotaConfidence": "MEDIUM",
+  "effectiveEstimatedRemaining": 85
+}
+```
+
+### Preflight sin red
+
+```json
+{
+  "checkpointSteps": 3,
+  "estimatedReusedCalls": 3,
+  "estimatedNewCalls": 57,
+  "estimatedMaximumCalls": 59,
+  "knownDailyLimit": 100,
+  "knownCurrentUsage": 10,
+  "softLimit": 70,
+  "safeToRun": true
+}
+```
 
 ## Resultado esperado al cerrar Fase 0
 

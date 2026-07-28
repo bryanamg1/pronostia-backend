@@ -12,6 +12,25 @@ const CHECKPOINT_DIRNAME = ".discovery-checkpoints";
 const CHECKPOINT_FILENAME = "validate-api-football.checkpoint.json";
 const OUTPUT_DIR = path.join("docs", "discovery-output");
 const OUTPUT_FILENAME = "api-football-discovery.latest.json";
+const PREFLIGHT_FILENAME = "api-football-discovery.preflight.json";
+
+const STATUS_OBSERVATION = {
+  CONSISTENT: "CONSISTENT",
+  EVENTUAL_OR_INCONSISTENT: "EVENTUAL_OR_INCONSISTENT",
+  INSUFFICIENT_DATA: "INSUFFICIENT_DATA",
+};
+
+const QUOTA_CONFIDENCE = {
+  HIGH: "HIGH",
+  MEDIUM: "MEDIUM",
+  LOW: "LOW",
+};
+
+const BOOKMAKER_AVAILABILITY = {
+  CONFIRMED: "CONFIRMED",
+  INCONCLUSIVE: "INCONCLUSIVE",
+  NOT_OBSERVED: "NOT_OBSERVED",
+};
 
 const TARGET_COMPETITIONS = [
   {
@@ -168,98 +187,12 @@ function parseRetryAfterMs(value, nowMs = Date.now()) {
   return DEFAULT_RETRY_AFTER_FALLBACK_MS;
 }
 
-function getNestedValue(object, paths) {
-  for (const dottedPath of paths) {
-    const parts = dottedPath.split(".");
-    let current = object;
-
-    for (const part of parts) {
-      if (current && Object.prototype.hasOwnProperty.call(current, part)) {
-        current = current[part];
-      } else {
-        current = undefined;
-        break;
-      }
-    }
-
-    if (current !== undefined && current !== null) {
-      return current;
-    }
+function readJsonIfExists(filePath) {
+  if (!fs.existsSync(filePath)) {
+    return null;
   }
 
-  return undefined;
-}
-
-function findFirstByKey(object, acceptedKeys) {
-  if (!object || typeof object !== "object") {
-    return undefined;
-  }
-
-  const entries = Object.entries(object);
-
-  for (const [key, value] of entries) {
-    if (acceptedKeys.includes(key) && typeof value !== "object") {
-      return value;
-    }
-  }
-
-  for (const [, value] of entries) {
-    const nested = findFirstByKey(value, acceptedKeys);
-    if (nested !== undefined) {
-      return nested;
-    }
-  }
-
-  return undefined;
-}
-
-function normalizeStatusMetadata(payload) {
-  const source = payload?.response || payload || {};
-  const plan =
-    getNestedValue(source, [
-      "subscription.plan",
-      "account.plan",
-      "plan",
-      "requests.plan",
-    ]) || findFirstByKey(source, ["plan"]);
-  const currentRaw =
-    getNestedValue(source, [
-      "requests.current",
-      "requests.used",
-      "quota.current",
-      "quota.used",
-      "usage.current",
-      "usage.used",
-    ]) || findFirstByKey(source, ["current", "used"]);
-  const limitRaw =
-    getNestedValue(source, [
-      "requests.limit",
-      "quota.limit",
-      "usage.limit",
-      "requests.daily",
-    ]) || findFirstByKey(source, ["limit", "daily"]);
-  const remainingRaw =
-    getNestedValue(source, [
-      "requests.remaining",
-      "quota.remaining",
-      "usage.remaining",
-    ]) || findFirstByKey(source, ["remaining"]);
-
-  const current = Number(currentRaw);
-  const limit = Number(limitRaw);
-  const remaining =
-    Number.isFinite(Number(remainingRaw)) && Number(remainingRaw) >= 0
-      ? Number(remainingRaw)
-      : Number.isFinite(current) && Number.isFinite(limit)
-        ? Math.max(0, limit - current)
-        : null;
-
-  return {
-    plan: plan ? String(plan) : null,
-    current: Number.isFinite(current) ? current : null,
-    limit: Number.isFinite(limit) ? limit : null,
-    remaining: Number.isFinite(remaining) ? remaining : null,
-  };
+  return JSON.parse(fs.readFileSync(filePath, "utf8"));
 }
 
 function loadCheckpoint(checkpointPath) {
@@ -288,6 +221,356 @@ function saveCheckpoint(checkpointPath, state) {
     )}\n`,
     "utf8"
   );
+}
+
+function normalizeStatusMetadata(payload) {
+  const response = payload?.response || {};
+  const warnings = [];
+
+  const plan =
+    response?.subscription && Object.prototype.hasOwnProperty.call(response.subscription, "plan")
+      ? response.subscription.plan
+      : null;
+  const current =
+    response?.requests && Object.prototype.hasOwnProperty.call(response.requests, "current")
+      ? Number(response.requests.current)
+      : null;
+  const limitDay =
+    response?.requests && Object.prototype.hasOwnProperty.call(response.requests, "limit_day")
+      ? Number(response.requests.limit_day)
+      : null;
+
+  if (plan === null || plan === undefined || plan === "") {
+    warnings.push("Missing provider field: response.subscription.plan");
+  }
+
+  if (!Number.isFinite(current)) {
+    warnings.push("Missing provider field: response.requests.current");
+  }
+
+  if (!Number.isFinite(limitDay)) {
+    warnings.push("Missing provider field: response.requests.limit_day");
+  }
+
+  const currentValue = Number.isFinite(current) ? current : null;
+  const limitDayValue = Number.isFinite(limitDay) ? limitDay : null;
+  const remaining =
+    Number.isFinite(currentValue) && Number.isFinite(limitDayValue)
+      ? limitDayValue - currentValue
+      : null;
+
+  return {
+    plan: plan ? String(plan) : null,
+    current: currentValue,
+    limitDay: limitDayValue,
+    remaining,
+    warnings,
+  };
+}
+
+function normalizeLegacyStatusSnapshot(snapshot) {
+  if (!snapshot) {
+    return {
+      plan: null,
+      current: null,
+      limitDay: null,
+      remaining: null,
+      warnings: ["Missing status snapshot."],
+    };
+  }
+
+  const limitDay =
+    snapshot.limitDay !== undefined && snapshot.limitDay !== null
+      ? Number(snapshot.limitDay)
+      : snapshot.limit !== undefined && snapshot.limit !== null
+        ? Number(snapshot.limit)
+        : null;
+
+  return {
+    plan: snapshot.plan ? String(snapshot.plan) : null,
+    current:
+      snapshot.current !== undefined &&
+      snapshot.current !== null &&
+      Number.isFinite(Number(snapshot.current))
+        ? Number(snapshot.current)
+        : null,
+    limitDay: Number.isFinite(limitDay) ? limitDay : null,
+    remaining:
+      snapshot.remaining !== undefined &&
+      snapshot.remaining !== null &&
+      Number.isFinite(Number(snapshot.remaining))
+        ? Number(snapshot.remaining)
+        : null,
+    warnings: Array.isArray(snapshot.warnings) ? snapshot.warnings.slice() : [],
+  };
+}
+
+function getStepCost(stepKey) {
+  if (stepKey === "seasons" || stepKey === "bookmakers" || stepKey === "bets") {
+    return 1;
+  }
+
+  if (stepKey.startsWith("competition:")) {
+    return 5;
+  }
+
+  return 0;
+}
+
+function getAllDiscoveryStepKeys() {
+  return [
+    "seasons",
+    "bookmakers",
+    "bets",
+    ...TARGET_COMPETITIONS.map((competition) => `competition:${competition.key}`),
+  ];
+}
+
+function buildBookmakerAvailability(catalogListed) {
+  return {
+    catalogListed: Boolean(catalogListed),
+    fixtureAvailability: BOOKMAKER_AVAILABILITY.INCONCLUSIVE,
+    competitionAvailability: BOOKMAKER_AVAILABILITY.INCONCLUSIVE,
+    mvpMarketAvailability: BOOKMAKER_AVAILABILITY.INCONCLUSIVE,
+  };
+}
+
+function extractHeaderQuotaObservations(requestLog) {
+  return (Array.isArray(requestLog) ? requestLog : []).map((entry) => ({
+    endpoint: entry.endpoint,
+    context: entry.context || null,
+    remaining: Number.isFinite(Number(entry.responseHeaders?.["x-ratelimit-requests-remaining"]))
+      ? Number(entry.responseHeaders["x-ratelimit-requests-remaining"])
+      : null,
+    limit: Number.isFinite(Number(entry.responseHeaders?.["x-ratelimit-requests-limit"]))
+      ? Number(entry.responseHeaders["x-ratelimit-requests-limit"])
+      : null,
+  }));
+}
+
+function isNonIncreasing(values) {
+  for (let index = 1; index < values.length; index += 1) {
+    if (values[index] > values[index - 1]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function buildQuotaObservability(reportLike, softLimitPercent) {
+  const initialStatus = normalizeLegacyStatusSnapshot(reportLike?.initialStatus);
+  const finalStatus = normalizeLegacyStatusSnapshot(reportLike?.finalStatus);
+  const requestLog = Array.isArray(reportLike?.requestLog) ? reportLike.requestLog : [];
+  const headerObservations = extractHeaderQuotaObservations(requestLog);
+  const headerRemainingObservations = headerObservations
+    .map((item) => item.remaining)
+    .filter((value) => Number.isFinite(value));
+  const headerLimitObservations = headerObservations
+    .map((item) => item.limit)
+    .filter((value) => Number.isFinite(value));
+
+  const warnings = [
+    ...initialStatus.warnings,
+    ...finalStatus.warnings,
+  ];
+
+  const uniqueHeaderLimits = [...new Set(headerLimitObservations)];
+  const limitDayFromHeaders =
+    uniqueHeaderLimits.length === 1 ? uniqueHeaderLimits[0] : null;
+  const statusLimitDay =
+    Number.isFinite(finalStatus.limitDay) ? finalStatus.limitDay : initialStatus.limitDay;
+  const knownDailyLimit = Number.isFinite(statusLimitDay)
+    ? statusLimitDay
+    : limitDayFromHeaders;
+  const knownDailyLimitSource = Number.isFinite(statusLimitDay)
+    ? "status_body"
+    : Number.isFinite(limitDayFromHeaders)
+      ? "headers_secondary"
+      : "unknown";
+
+  if (!Number.isFinite(statusLimitDay) && Number.isFinite(limitDayFromHeaders)) {
+    warnings.push(
+      "Daily limit could only be inferred from headers because the stored status snapshot did not include response.requests.limit_day."
+    );
+  }
+
+  const knownCurrentUsage =
+    Number.isFinite(finalStatus.current) ? finalStatus.current : initialStatus.current;
+  const currentUsageSource =
+    Number.isFinite(finalStatus.current) ? "status_body_final" :
+    Number.isFinite(initialStatus.current) ? "status_body_initial" :
+    "unknown";
+
+  const statusReportedRemaining =
+    Number.isFinite(finalStatus.remaining) ? finalStatus.remaining :
+    Number.isFinite(initialStatus.remaining) ? initialStatus.remaining :
+    Number.isFinite(knownDailyLimit) && Number.isFinite(knownCurrentUsage)
+      ? knownDailyLimit - knownCurrentUsage
+      : null;
+
+  const locallyEstimatedConsumption = Number.isFinite(Number(reportLike?.httpCallsIssued))
+    ? Number(reportLike.httpCallsIssued)
+    : requestLog.length;
+
+  const observedStatusDelta =
+    Number.isFinite(initialStatus.current) && Number.isFinite(finalStatus.current)
+      ? finalStatus.current - initialStatus.current
+      : null;
+
+  const localConservativeCurrent =
+    Number.isFinite(knownCurrentUsage)
+      ? knownCurrentUsage + locallyEstimatedConsumption
+      : null;
+  const locallyEstimatedRemaining =
+    Number.isFinite(knownDailyLimit) && Number.isFinite(localConservativeCurrent)
+      ? knownDailyLimit - localConservativeCurrent
+      : null;
+  const effectiveEstimatedRemaining =
+    Number.isFinite(statusReportedRemaining) && Number.isFinite(locallyEstimatedRemaining)
+      ? Math.min(statusReportedRemaining, locallyEstimatedRemaining)
+      : Number.isFinite(statusReportedRemaining)
+        ? statusReportedRemaining
+        : Number.isFinite(locallyEstimatedRemaining)
+          ? locallyEstimatedRemaining
+          : null;
+
+  const headersMonotonic =
+    headerRemainingObservations.length <= 1 || isNonIncreasing(headerRemainingObservations);
+  const quotaObservationStatus =
+    !Number.isFinite(observedStatusDelta)
+      ? STATUS_OBSERVATION.INSUFFICIENT_DATA
+      : observedStatusDelta !== locallyEstimatedConsumption || !headersMonotonic
+        ? STATUS_OBSERVATION.EVENTUAL_OR_INCONSISTENT
+        : STATUS_OBSERVATION.CONSISTENT;
+
+  if (!headersMonotonic) {
+    warnings.push(
+      "Header observations for x-ratelimit-requests-remaining were non-monotonic and are treated as secondary evidence only."
+    );
+  }
+
+  const quotaConfidence =
+    knownDailyLimitSource === "status_body" &&
+    quotaObservationStatus === STATUS_OBSERVATION.CONSISTENT
+      ? QUOTA_CONFIDENCE.HIGH
+      : knownDailyLimitSource === "status_body"
+        ? QUOTA_CONFIDENCE.MEDIUM
+        : QUOTA_CONFIDENCE.LOW;
+
+  const softLimitAbsolute = Number.isFinite(knownDailyLimit)
+    ? Math.floor((knownDailyLimit * softLimitPercent) / 100)
+    : null;
+  const softLimitRemaining =
+    Number.isFinite(softLimitAbsolute) && Number.isFinite(knownCurrentUsage)
+      ? softLimitAbsolute - knownCurrentUsage
+      : null;
+
+  return {
+    plan: finalStatus.plan || initialStatus.plan || null,
+    statusCurrentInitial: Number.isFinite(initialStatus.current) ? initialStatus.current : null,
+    statusCurrentFinal: Number.isFinite(finalStatus.current) ? finalStatus.current : null,
+    knownCurrentUsage: Number.isFinite(knownCurrentUsage) ? knownCurrentUsage : null,
+    currentUsageSource,
+    knownDailyLimit: Number.isFinite(knownDailyLimit) ? knownDailyLimit : null,
+    knownDailyLimitSource,
+    reportedRemaining:
+      Number.isFinite(statusReportedRemaining) ? statusReportedRemaining : null,
+    observedStatusDelta,
+    headerRemainingObservations,
+    headerLimitObservations,
+    headersMonotonic,
+    httpCallsIssued: locallyEstimatedConsumption,
+    locallyEstimatedConsumption,
+    localConservativeCurrent:
+      Number.isFinite(localConservativeCurrent) ? localConservativeCurrent : null,
+    locallyEstimatedRemaining:
+      Number.isFinite(locallyEstimatedRemaining) ? locallyEstimatedRemaining : null,
+    effectiveEstimatedRemaining:
+      Number.isFinite(effectiveEstimatedRemaining) ? effectiveEstimatedRemaining : null,
+    quotaObservationStatus,
+    quotaConfidence,
+    softLimitAbsolute,
+    softLimitRemaining,
+    warnings,
+  };
+}
+
+function buildPreflightReport({
+  checkpointState,
+  latestOutput,
+  softLimitPercent,
+  max429Retries = MAX_429_RETRIES,
+}) {
+  const steps = checkpointState?.steps || {};
+  const checkpointStepKeys = Object.keys(steps);
+  const allStepKeys = getAllDiscoveryStepKeys();
+  const reusedStepKeys = checkpointStepKeys.filter((stepKey) => allStepKeys.includes(stepKey));
+  const missingStepKeys = allStepKeys.filter((stepKey) => !reusedStepKeys.includes(stepKey));
+  const estimatedReusedCalls = reusedStepKeys.reduce(
+    (sum, stepKey) => sum + getStepCost(stepKey),
+    0
+  );
+  const estimatedNewCalls =
+    2 + missingStepKeys.reduce((sum, stepKey) => sum + getStepCost(stepKey), 0);
+  const estimatedMaximumCalls = estimatedNewCalls + max429Retries;
+  const quotaObservability = buildQuotaObservability(latestOutput || {}, softLimitPercent);
+  const checkpointReusable = reusedStepKeys.length > 0;
+  const marginToSoftLimit =
+    Number.isFinite(quotaObservability.softLimitRemaining)
+      ? quotaObservability.softLimitRemaining - estimatedMaximumCalls
+      : null;
+  const marginToEffectiveRemaining =
+    Number.isFinite(quotaObservability.effectiveEstimatedRemaining)
+      ? quotaObservability.effectiveEstimatedRemaining - estimatedMaximumCalls
+      : null;
+  const marginOfSafety =
+    Number.isFinite(marginToSoftLimit) && Number.isFinite(marginToEffectiveRemaining)
+      ? Math.min(marginToSoftLimit, marginToEffectiveRemaining)
+      : Number.isFinite(marginToSoftLimit)
+        ? marginToSoftLimit
+        : Number.isFinite(marginToEffectiveRemaining)
+          ? marginToEffectiveRemaining
+          : null;
+  const safeToRun = Boolean(
+    checkpointReusable &&
+      Number.isFinite(quotaObservability.knownDailyLimit) &&
+      Number.isFinite(quotaObservability.knownCurrentUsage) &&
+      Number.isFinite(marginToSoftLimit) &&
+      Number.isFinite(marginToEffectiveRemaining) &&
+      marginToSoftLimit >= 0 &&
+      marginToEffectiveRemaining >= 0
+  );
+
+  return {
+    generatedAt: new Date().toISOString(),
+    checkpointSteps: checkpointStepKeys.length,
+    reusedStepKeys,
+    checkpointReusable,
+    estimatedReusedCalls,
+    estimatedNewCalls,
+    estimatedMaximumCalls,
+    knownDailyLimit: quotaObservability.knownDailyLimit,
+    knownCurrentUsage: quotaObservability.knownCurrentUsage,
+    statusCurrentInitial: quotaObservability.statusCurrentInitial,
+    statusCurrentFinal: quotaObservability.statusCurrentFinal,
+    observedStatusDelta: quotaObservability.observedStatusDelta,
+    headerRemainingObservations: quotaObservability.headerRemainingObservations,
+    locallyEstimatedConsumption: quotaObservability.locallyEstimatedConsumption,
+    quotaObservationStatus: quotaObservability.quotaObservationStatus,
+    quotaConfidence: quotaObservability.quotaConfidence,
+    effectiveEstimatedRemaining: quotaObservability.effectiveEstimatedRemaining,
+    softLimit: quotaObservability.softLimitAbsolute,
+    softLimitPercent,
+    marginOfSafety,
+    safeToRun,
+    notes: [
+      "estimatedNewCalls includes one initial /status call and one final /status call.",
+      "estimatedMaximumCalls assumes the run stops after the first request that still returns HTTP 429 after two retries.",
+      "effectiveEstimatedRemaining = min(reportedRemaining, knownDailyLimit - (knownCurrentUsage + locallyEstimatedConsumption)).",
+    ],
+    warnings: quotaObservability.warnings,
+  };
 }
 
 function pickLeagueCandidate(response, target) {
@@ -329,11 +612,13 @@ function pickLatestSeason(seasons) {
 
 function buildRuntimeConfig(overrides = {}) {
   const rootDir = overrides.rootDir || process.cwd();
+  const providedSoftLimitPercent =
+    overrides.softLimitPercent !== undefined ||
+    process.env.SPORTS_API_SOFT_LIMIT_PERCENT !== undefined;
 
   return {
     provider: overrides.provider || process.env.SPORTS_API_PROVIDER || DEFAULT_PROVIDER,
-    baseUrl:
-      overrides.baseUrl || process.env.SPORTS_API_BASE_URL || DEFAULT_BASE_URL,
+    baseUrl: overrides.baseUrl || process.env.SPORTS_API_BASE_URL || DEFAULT_BASE_URL,
     apiKey: overrides.apiKey || process.env.SPORTS_API_KEY,
     minIntervalMs: numberEnv(
       overrides.minIntervalMs ?? process.env.SPORTS_API_MIN_INTERVAL_MS,
@@ -347,13 +632,18 @@ function buildRuntimeConfig(overrides = {}) {
       overrides.softLimitPercent ?? process.env.SPORTS_API_SOFT_LIMIT_PERCENT,
       DEFAULT_SOFT_LIMIT_PERCENT
     ),
+    providedSoftLimitPercent,
     smokeTest:
       overrides.smokeTest ?? parseBooleanEnv(process.env.DISCOVERY_SMOKE_TEST),
+    dryRun:
+      overrides.dryRun ?? parseBooleanEnv(process.env.DISCOVERY_DRY_RUN),
     checkpointPath:
       overrides.checkpointPath ||
       path.join(rootDir, CHECKPOINT_DIRNAME, CHECKPOINT_FILENAME),
     outputPath:
       overrides.outputPath || path.join(rootDir, OUTPUT_DIR, OUTPUT_FILENAME),
+    preflightPath:
+      overrides.preflightPath || path.join(rootDir, OUTPUT_DIR, PREFLIGHT_FILENAME),
     rootDir,
   };
 }
@@ -366,24 +656,23 @@ function createDiscoveryRunner(options = {}) {
   const checkpointState =
     options.checkpointState || loadCheckpoint(config.checkpointPath);
 
-  if (typeof fetchImpl !== "function") {
-    throw new Error("A fetch implementation is required to run discovery.");
-  }
-
   const runtime = {
     lastRequestStartedAtMs: null,
     checkpointState,
+    latestOutput: options.latestOutput || readJsonIfExists(config.outputPath),
     quota: {
       plan: null,
       current: null,
-      limit: null,
+      limitDay: null,
       remaining: null,
+      warnings: [],
     },
     report: {
       generatedAt: null,
       provider: config.provider,
       baseUrl: config.baseUrl,
       smokeTest: config.smokeTest,
+      dryRun: config.dryRun,
       minIntervalMs: config.minIntervalMs,
       retryAfterFallbackMs: config.retryAfterFallbackMs,
       softLimitPercent: config.softLimitPercent,
@@ -396,6 +685,7 @@ function createDiscoveryRunner(options = {}) {
           "Plan observed: Free.",
           "Observed usage before correction: 10/100 daily requests consumed.",
           "Observed failure mode before correction: HTTP 429 caused by per-minute rate limiting, not by daily quota exhaustion.",
+          "Observed smoke test after pacing correction: 5 HTTP calls, ~7 second spacing, 0 HTTP 429, checkpoint created, Bet365 and Betano listed in the general catalog.",
         ],
       },
       statusSnapshots: {
@@ -442,8 +732,8 @@ function createDiscoveryRunner(options = {}) {
       return;
     }
 
-    const { current, limit, remaining } = runtime.quota;
-    if (!Number.isFinite(limit)) {
+    const { current, limitDay, remaining } = runtime.quota;
+    if (!Number.isFinite(limitDay)) {
       return;
     }
 
@@ -454,10 +744,10 @@ function createDiscoveryRunner(options = {}) {
     }
 
     if (Number.isFinite(current)) {
-      const usagePercent = (current / limit) * 100;
+      const usagePercent = (current / limitDay) * 100;
       if (usagePercent >= config.softLimitPercent) {
         throw new Error(
-          `Soft limit reached before calling ${endpoint}. Current usage ${current}/${limit} (${usagePercent.toFixed(
+          `Soft limit reached before calling ${endpoint}. Current usage ${current}/${limitDay} (${usagePercent.toFixed(
             2
           )}%).`
         );
@@ -520,21 +810,18 @@ function createDiscoveryRunner(options = {}) {
       }
 
       if (response.status === 429) {
-        if (attempt >= MAX_429_RETRIES) {
-          const retryAfterMs = parseRetryAfterMs(
-            response.headers.get("retry-after"),
-            nowMs()
-          );
-          throw new Error(
-            `HTTP 429 persisted after ${MAX_429_RETRIES} retries on ${url}. Last wait ${retryAfterMs} ms.`
-          );
-        }
-
         const retryAfterMs = parseRetryAfterMs(
           response.headers.get("retry-after"),
           nowMs()
         );
         requestLogEntry.retryAfterMs = retryAfterMs;
+
+        if (attempt >= MAX_429_RETRIES) {
+          throw new Error(
+            `HTTP 429 persisted after ${MAX_429_RETRIES} retries on ${url}. Last wait ${retryAfterMs} ms.`
+          );
+        }
+
         attempt += 1;
         await sleepImpl(retryAfterMs || config.retryAfterFallbackMs);
         continue;
@@ -564,8 +851,9 @@ function createDiscoveryRunner(options = {}) {
       url: statusResponse.url,
       plan: normalized.plan,
       current: normalized.current,
-      limit: normalized.limit,
+      limitDay: normalized.limitDay,
       remaining: normalized.remaining,
+      warnings: normalized.warnings,
     };
 
     runtime.report.statusSnapshots[label] = snapshot;
@@ -709,9 +997,33 @@ function createDiscoveryRunner(options = {}) {
     });
   }
 
+  async function runDryRun() {
+    const softLimitPercent = config.providedSoftLimitPercent
+      ? config.softLimitPercent
+      : Number.isFinite(Number(runtime.latestOutput?.softLimitPercent))
+        ? Number(runtime.latestOutput.softLimitPercent)
+        : config.softLimitPercent;
+
+    const preflight = buildPreflightReport({
+      checkpointState: runtime.checkpointState,
+      latestOutput: runtime.latestOutput,
+      softLimitPercent,
+    });
+
+    fs.mkdirSync(path.dirname(config.preflightPath), { recursive: true });
+    fs.writeFileSync(config.preflightPath, `${JSON.stringify(preflight, null, 2)}\n`, "utf8");
+
+    return preflight;
+  }
+
   async function run() {
-    assertEnv(config.apiKey);
     runtime.report.generatedAt = new Date().toISOString();
+
+    if (config.dryRun) {
+      return runDryRun();
+    }
+
+    assertEnv(config.apiKey);
 
     const initialStatus = await fetchStatusSnapshot("initial");
 
@@ -756,7 +1068,7 @@ function createDiscoveryRunner(options = {}) {
       };
     });
 
-    let competitions = [];
+    const competitions = [];
     if (!config.smokeTest) {
       for (const target of TARGET_COMPETITIONS) {
         competitions.push(await probeCompetition(target));
@@ -764,22 +1076,18 @@ function createDiscoveryRunner(options = {}) {
     }
 
     const finalStatus = await fetchStatusSnapshot("final");
-    const quotaDeltaObserved =
-      Number.isFinite(initialStatus.current) && Number.isFinite(finalStatus.current)
-        ? finalStatus.current - initialStatus.current
-        : null;
 
     const output = {
       generatedAt: runtime.report.generatedAt,
       provider: config.provider,
       baseUrl: config.baseUrl,
       smokeTest: config.smokeTest,
+      dryRun: false,
       minIntervalMs: config.minIntervalMs,
       retryAfterFallbackMs: config.retryAfterFallbackMs,
       softLimitPercent: config.softLimitPercent,
       initialStatus,
       finalStatus,
-      quotaDeltaObserved,
       httpCallsIssued: runtime.report.requestLog.length,
       requestLog: runtime.report.requestLog,
       reusedCheckpointSteps: runtime.report.reusedCheckpointSteps,
@@ -787,14 +1095,27 @@ function createDiscoveryRunner(options = {}) {
       checkpointPath: config.checkpointPath,
       outputPath: config.outputPath,
       evidence: runtime.report.evidence,
+      quotaObservability: buildQuotaObservability(
+        {
+          initialStatus,
+          finalStatus,
+          requestLog: runtime.report.requestLog,
+          httpCallsIssued: runtime.report.requestLog.length,
+        },
+        config.softLimitPercent
+      ),
       seasons,
       references: {
         bookmakers,
         bets,
       },
+      bookmakersObserved: {
+        bet365: buildBookmakerAvailability(bookmakers.bet365Available),
+        betano: buildBookmakerAvailability(bookmakers.betanoAvailable),
+      },
       competitions,
       recommendedCommand: config.smokeTest
-        ? "SPORTS_API_MIN_INTERVAL_MS=7000 node ./scripts/discovery/validate-api-football.js"
+        ? "DISCOVERY_DRY_RUN=true node ./scripts/discovery/validate-api-football.js"
         : null,
     };
 
@@ -826,13 +1147,19 @@ if (require.main === module) {
 }
 
 module.exports = {
+  BOOKMAKER_AVAILABILITY,
   CHECKPOINT_DIRNAME,
   CHECKPOINT_FILENAME,
   DEFAULT_MIN_INTERVAL_MS,
   DEFAULT_RETRY_AFTER_FALLBACK_MS,
   DEFAULT_SOFT_LIMIT_PERCENT,
   MAX_429_RETRIES,
+  QUOTA_CONFIDENCE,
+  STATUS_OBSERVATION,
   TARGET_COMPETITIONS,
+  buildBookmakerAvailability,
+  buildPreflightReport,
+  buildQuotaObservability,
   buildRuntimeConfig,
   createDiscoveryRunner,
   loadCheckpoint,
