@@ -2,15 +2,21 @@ import { randomUUID } from 'node:crypto'
 
 import { createGetHealthStatusUseCase } from '../application/system/getHealthStatus.js'
 import { createGetReadinessStatusUseCase } from '../application/system/getReadinessStatus.js'
+import { createEvaluateHistoricalModelUseCase } from '../application/prediction/useCases/evaluateHistoricalModel.js'
+import { createGenerateHistoricalPredictionUseCase } from '../application/prediction/useCases/generateHistoricalPrediction.js'
 import { createRunScheduledSystemCheckUseCase } from '../application/system/runScheduledSystemCheck.js'
 import { createGetFixtureByIdUseCase } from '../application/sports/getFixtureById.js'
 import { createListCompetitionsUseCase } from '../application/sports/listCompetitions.js'
 import { createListTodayFixturesUseCase } from '../application/sports/listTodayFixtures.js'
 import { createRunScheduledSportsSyncUseCase } from '../application/sports/runScheduledSportsSync.js'
 import { createSyncSportsDataUseCase } from '../application/sports/syncSportsData.js'
+import { DEFAULT_PREDICTION_MODEL_CONFIG } from '../domain/prediction/constants/modelDefaults.js'
 import { MySqlReadinessProbe } from './database.js'
 import { createCompetitionRepository } from '../infrastructure/database/repositories/CompetitionRepository.js'
 import { createFixtureRepository } from '../infrastructure/database/repositories/FixtureRepository.js'
+import { createHistoricalPredictionRepository } from '../infrastructure/database/repositories/HistoricalPredictionRepository.js'
+import { createModelEvaluationRepository } from '../infrastructure/database/repositories/ModelEvaluationRepository.js'
+import { createModelVersionRepository } from '../infrastructure/database/repositories/ModelVersionRepository.js'
 import { createSystemRunRepository } from '../infrastructure/database/repositories/SystemRunRepository.js'
 import { createSportsSyncStateRepository } from '../infrastructure/database/repositories/SportsSyncStateRepository.js'
 import { createTeamRepository } from '../infrastructure/database/repositories/TeamRepository.js'
@@ -33,6 +39,13 @@ export function createDependencies({ env, loggerOverride } = {}) {
   const teamRepository = createTeamRepository({ poolManager })
   const fixtureRepository = createFixtureRepository({ poolManager })
   const sportsSyncStateRepository = createSportsSyncStateRepository({
+    poolManager
+  })
+  const modelVersionRepository = createModelVersionRepository({ poolManager })
+  const historicalPredictionRepository = createHistoricalPredictionRepository({
+    poolManager
+  })
+  const modelEvaluationRepository = createModelEvaluationRepository({
     poolManager
   })
   const sportsApiClient = env.sports.configured
@@ -89,6 +102,22 @@ export function createDependencies({ env, loggerOverride } = {}) {
   const getFixtureById = createGetFixtureByIdUseCase({
     fixtureRepository
   })
+  const predictionModelConfig = DEFAULT_PREDICTION_MODEL_CONFIG
+  const generateHistoricalPrediction =
+    createGenerateHistoricalPredictionUseCase({
+      fixtureRepository,
+      historicalPredictionRepository,
+      modelVersionRepository,
+      modelConfig: predictionModelConfig
+    })
+  const evaluateHistoricalModel = createEvaluateHistoricalModelUseCase({
+    competitionRepository,
+    fixtureRepository,
+    modelVersionRepository,
+    historicalPredictionRepository,
+    modelEvaluationRepository,
+    modelConfig: predictionModelConfig
+  })
 
   const scheduler = createScheduler({
     enabled: env.scheduler.enabled,
@@ -111,7 +140,9 @@ export function createDependencies({ env, loggerOverride } = {}) {
       runScheduledSportsSync,
       listCompetitions,
       listTodayFixtures,
-      getFixtureById
+      getFixtureById,
+      generateHistoricalPrediction,
+      evaluateHistoricalModel
     }
   }
 }

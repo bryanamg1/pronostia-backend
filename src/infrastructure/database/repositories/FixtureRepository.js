@@ -134,6 +134,32 @@ export function createFixtureRepository({ poolManager }) {
       )
 
       return mapFixtureRow(rows[0])
+    },
+
+    async listCompletedFixturesByCompetition({ competitionId }) {
+      const pool = poolManager.getPool()
+      const [rows] = await pool.query(
+        `${FIXTURE_SELECT}
+         WHERE f.competition_id = ?
+           AND f.home_goals IS NOT NULL
+           AND f.away_goals IS NOT NULL
+         ORDER BY f.kickoff_at ASC, f.id ASC`,
+        [competitionId]
+      )
+
+      return rows.map(mapFixtureRow)
+    },
+
+    async listFixturesByCompetition({ competitionId }) {
+      const pool = poolManager.getPool()
+      const [rows] = await pool.query(
+        `${FIXTURE_SELECT}
+         WHERE f.competition_id = ?
+         ORDER BY f.kickoff_at ASC, f.id ASC`,
+        [competitionId]
+      )
+
+      return rows.map(mapFixtureRow)
     }
   }
 }
