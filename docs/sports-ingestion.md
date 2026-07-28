@@ -16,6 +16,8 @@ La validacion empirica confirmo una limitacion externa del proveedor usado en es
 - Consulta historica autorizada sobre `league=39` y `season=2024` respondio `HTTP 200` con `results=380`.
 - La fixture `1208021` se usa solo como muestra historica sanitizada de tests.
 
+En la validacion final de Fase 3, esa evidencia historica se amplio con una unica consulta controlada adicional a `GET /fixtures?league=39&season=2024&status=FT`, cuyo payload quedo guardado solo en una ruta ignorada por Git para reutilizacion local.
+
 La fixture `1208021` no representa un partido futuro y nunca debe presentarse como evidencia de disponibilidad productiva actual.
 
 ## Comportamiento del backend
@@ -25,6 +27,7 @@ La fixture `1208021` no representa un partido futuro y nunca debe presentarse co
 - Una ejecucion sin fixtures elegibles se trata como resultado valido.
 - Una restriccion de plan queda diferenciada de un error tecnico.
 - El scheduler registra ejecuciones sin fixtures como `NO_FIXTURES`.
+- La importacion historica controlada de Premier League 2024 persiste la temporada completa mediante upserts cronologicos e idempotentes.
 
 ## Desacople y alcance
 

@@ -87,3 +87,24 @@ Salida minima por fixture:
 - esta fase opera en modo historico y no debe presentar datos historicos como partidos futuros;
 - no incluye odds, implied probability, edge ni recomendaciones de apuestas;
 - no incluye OpenAI.
+
+## Validacion historica real
+
+La validacion empirica final de Fase 3 se ejecuto sobre:
+
+- competicion: Premier League;
+- leagueId: `39`;
+- season: `2024`;
+- dataset real recibido: `380` fixtures `FT`;
+- fixtures persistidas en cache local: `380`;
+- warm-up cronologico: `30` fixtures excluidas por muestra previa insuficiente;
+- fixtures evaluadas: `350`;
+- cobertura: `92.11%`.
+
+Parametros usados en la evaluacion real:
+
+- `modelVersion`: `historical-first-v1`;
+- `INITIAL_HEURISTIC_WEIGHTS`: `poisson=0.60`, `elo=0.25`, `form=0.15`;
+- `minSamplesPerTeam`: `3`;
+- `minFixturesForEvaluation`: `20`;
+- orden temporal: `kickoff_at ASC`, desempate por `fixture_id ASC`.

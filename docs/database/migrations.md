@@ -22,6 +22,14 @@ npm run migrate
 npm run migrate:status
 ```
 
+## Importar historia real controlada
+
+```bash
+npm run sync:sports:history -- --competition=premier-league --season=2024
+```
+
+Este flujo reutiliza un payload local ignorado por Git cuando existe. Si no existe, realiza una sola consulta controlada a API-Football para `league=39`, `season=2024`, `status=FT`, conserva el payload localmente y luego ejecuta upserts cronologicos idempotentes.
+
 Si la configuracion de MySQL no esta completa o las credenciales no son validas, el comando responde con un resultado controlado o un error sanitizado. No se deben publicar credenciales ni connection strings completas.
 
 ## Tablas gestionadas actualmente

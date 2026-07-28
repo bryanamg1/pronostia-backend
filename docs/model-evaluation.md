@@ -48,6 +48,39 @@ npm run model:predict -- --fixtureId=1
 - `not_found`: la competicion o fixture solicitado no existe en cache local;
 - `insufficient_persisted_history`: no hay suficientes fixtures historicos persistidos para calcular metricas reales sin inventarlas.
 
+## Resultado real de referencia
+
+Evaluacion real ejecutada sobre Premier League `2024`:
+
+- fixtures persistidas: `380`;
+- warm-up: `30`;
+- fixtures evaluadas: `350`;
+- cobertura: `92.11%`;
+- `modelVersion`: `historical-first-v1`;
+- `accuracy 1X2`: `0.4829`;
+- `log loss 1X2`: `1.0580`;
+- `Brier 1X2`: `0.6371`;
+- `accuracy over/under 2.5`: `0.5543`;
+- `Brier over/under 2.5`: `0.2690`;
+- `accuracy BTTS`: `0.4886`;
+- `Brier BTTS`: `0.2782`.
+
+Promedios de probabilidad observados:
+
+- `homeWin`: `0.4358`;
+- `draw`: `0.2224`;
+- `awayWin`: `0.3417`.
+
+Distribucion de data quality observada:
+
+- `SUFFICIENT`: `350`.
+
+Interpretacion:
+
+- este resultado valida el pipeline historico y la reproducibilidad del modelo;
+- no implica rentabilidad futura;
+- la calibracion fina queda para una fase posterior.
+
 ## Interpretacion responsable
 
 - las probabilidades son estimaciones estadisticas;

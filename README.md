@@ -7,7 +7,7 @@ Backend de PronostIA para orquestar analisis prepartido de futbol, exponer una A
 - Fase 0 completada con decision publica `CONDITIONAL GO` para API-Football.
 - Fase 1 completada y fusionada en ramas estables.
 - Fase 2 completada con cierre tecnico sobre ingesta deportiva acotada, cache historica y scheduler.
-- Fase 3 en implementacion sobre motor estadistico determinista y evaluacion historica.
+- Fase 3 completada tecnicamente con motor estadistico determinista y evaluacion historica real sobre Premier League 2024.
 - Restriccion externa conocida: la cuenta API-Football Free validada no tiene acceso a `season=2026` para las ligas trianguladas; la evidencia real disponible en esta fase fue historica.
 - No existen aun pronosticos, odds productivas ni OpenAI operativo.
 
@@ -79,6 +79,7 @@ npm run check
 - `npm run migrate`
 - `npm run migrate:status`
 - `npm run sync:sports`
+- `npm run sync:sports:history -- --competition=premier-league --season=2024`
 - `npm run model:predict -- --fixtureId=<id>`
 - `npm run model:evaluate -- --competition=premier-league --season=2024`
 
