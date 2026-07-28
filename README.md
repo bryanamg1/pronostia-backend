@@ -4,37 +4,84 @@ Backend de PronostIA para orquestar analisis prepartido de futbol, exponer una A
 
 ## Estado
 
-`Fase 0 completada`
+- Fase 0 completada con decision publica `CONDITIONAL GO` para API-Football.
+- Fase 1 en implementacion sobre la fundacion del backend.
+- No existen aun integraciones deportivas productivas, pronosticos ni OpenAI operativo.
 
-La Fase 0 de discovery del proveedor fue completada con decision `CONDITIONAL GO`. La implementacion funcional del backend comienza en la Fase 1.
-
-## Proposito
-
-El backend gestionara en fases posteriores:
-
-- calculo determinista de probabilidades;
-- exposicion de endpoints REST;
-- scheduler diario;
-- maquina de estados propia;
-- persistencia en MySQL;
-- integraciones futuras con proveedor deportivo y OpenAI.
-
-## Stack previsto
+## Stack
 
 - JavaScript
 - Node.js
 - Express
 - MySQL
-- API REST
-- Scheduler
-- Maquina de estados
-- Integracion futura con API deportiva y OpenAI
+- Winston
+- node-cron
+- Zod
 
-## Blueprint oficial
+## Arquitectura
 
-El blueprint fuente de verdad del proyecto esta en [./blueprint-celula-hibrida.md](./blueprint-celula-hibrida.md).
+El backend usa arquitectura por capas:
 
-## Resultado de discovery
+- `src/config`
+- `src/domain`
+- `src/application`
+- `src/infrastructure`
+- `src/presentation`
+- `src/shared`
+
+## Instalacion
+
+```bash
+npm install
+cp .env.example .env
+npm run check
+```
+
+## Variables de entorno principales
+
+- `NODE_ENV`
+- `PORT`
+- `FRONTEND_URL`
+- `LOG_LEVEL`
+- `TIMEZONE`
+- `DB_HOST`
+- `DB_PORT`
+- `DB_USER`
+- `DB_PASSWORD`
+- `DB_NAME`
+- `SCHEDULER_ENABLED`
+- `SCHEDULER_CRON`
+- `RATE_LIMIT_WINDOW_MS`
+- `RATE_LIMIT_MAX_REQUESTS`
+
+## Scripts
+
+- `npm run dev`
+- `npm start`
+- `npm test`
+- `npm run test:coverage`
+- `npm run lint`
+- `npm run format:check`
+- `npm run check`
+- `npm run migrate`
+- `npm run migrate:status`
+
+## Health endpoints
+
+- `GET /api/health`
+- `GET /api/health/ready`
+
+Documentacion publica: [docs/api/health-endpoints.md](./docs/api/health-endpoints.md)
+
+## Migraciones
+
+La infraestructura inicial de migraciones y la tabla `system_runs` se documentan en [docs/database/migrations.md](./docs/database/migrations.md).
+
+## Seguridad de dependencias
+
+El resultado publico de la auditoria de dependencias se resume en [docs/security/dependency-audit.md](./docs/security/dependency-audit.md).
+
+## Discovery del proveedor
 
 La evidencia publica de Fase 0 vive en:
 
@@ -42,22 +89,6 @@ La evidencia publica de Fase 0 vive en:
 - [docs/provider-discovery-matrix.csv](./docs/provider-discovery-matrix.csv)
 - `scripts/discovery/`
 
-Resumen publico de la decision:
+## Blueprint oficial
 
-- API-Football quedo en estado `CONDITIONAL GO`.
-- Las 11 competiciones objetivo fueron identificadas.
-- El plan Free es util para discovery y desarrollo acotado.
-- El plan Free no es suficiente para operacion diaria con 40 partidos.
-- Bet365 y Betano aparecen en el catalogo, pero su disponibilidad real por fixture sigue `INCONCLUSIVE`.
-
-## Repositorio relacionado
-
-Frontend: https://github.com/bryanamg1/pronostia-frontend
-
-## Flujo Git
-
-- `main`: linea estable del repositorio.
-- `develop`: base obligatoria para cada nueva tarea.
-- ramas de trabajo: `bryan/<tipo>/<nombre-corto>`.
-
-Cada fase requiere autorizacion explicita antes de iniciar cambios de implementacion.
+El blueprint fuente de verdad del proyecto esta en [./blueprint-celula-hibrida.md](./blueprint-celula-hibrida.md).
