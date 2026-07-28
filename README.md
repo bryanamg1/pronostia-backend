@@ -77,6 +77,10 @@ Documentacion publica: [docs/api/health-endpoints.md](./docs/api/health-endpoint
 
 La infraestructura inicial de migraciones y la tabla `system_runs` se documentan en [docs/database/migrations.md](./docs/database/migrations.md).
 
+## Seguridad de dependencias
+
+El resultado publico de la auditoria de dependencias se resume en [docs/security/dependency-audit.md](./docs/security/dependency-audit.md).
+
 ## Discovery del proveedor
 
 La evidencia publica de Fase 0 vive en:

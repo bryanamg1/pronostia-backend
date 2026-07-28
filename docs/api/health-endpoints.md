@@ -31,4 +31,11 @@ Comportamiento:
 - verifica la base de datos solo si esta configurada;
 - no expone credenciales;
 - responde con contrato uniforme;
+- devuelve `200` cuando la readiness esta disponible;
 - devuelve `503` cuando la readiness falla.
+
+Estados observados en la implementacion actual:
+
+- `status: "ok"` con `checks.database.status = "not_configured"` cuando no hay configuracion DB utilizable
+- `status: "ok"` con `checks.database.status = "ok"` cuando la base responde correctamente
+- `status: "error"` con `checks.database.status = "error"` cuando la comprobacion falla
