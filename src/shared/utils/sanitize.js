@@ -14,8 +14,13 @@ const SENSITIVE_KEYS = new Set([
 ])
 
 export function sanitizeHeaders(headers = {}) {
+  const source =
+    typeof headers?.entries === 'function'
+      ? Object.fromEntries(headers.entries())
+      : headers
+
   return Object.fromEntries(
-    Object.entries(headers).map(([key, value]) => {
+    Object.entries(source).map(([key, value]) => {
       if (SENSITIVE_KEYS.has(key.toLowerCase())) {
         return [key, REDACTED]
       }

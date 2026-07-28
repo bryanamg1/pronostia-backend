@@ -5,8 +5,9 @@ Backend de PronostIA para orquestar analisis prepartido de futbol, exponer una A
 ## Estado
 
 - Fase 0 completada con decision publica `CONDITIONAL GO` para API-Football.
-- Fase 1 en implementacion sobre la fundacion del backend.
-- No existen aun integraciones deportivas productivas, pronosticos ni OpenAI operativo.
+- Fase 1 completada y fusionada en ramas estables.
+- Fase 2 en implementacion sobre ingesta deportiva acotada, cache historica y scheduler.
+- No existen aun pronosticos, odds productivas ni OpenAI operativo.
 
 ## Stack
 
@@ -53,6 +54,16 @@ npm run check
 - `SCHEDULER_CRON`
 - `RATE_LIMIT_WINDOW_MS`
 - `RATE_LIMIT_MAX_REQUESTS`
+- `SPORTS_API_PROVIDER`
+- `SPORTS_API_BASE_URL`
+- `SPORTS_API_KEY`
+- `SPORTS_DEFAULT_SEASON`
+- `SPORTS_API_MIN_INTERVAL_MS`
+- `SPORTS_API_RETRY_AFTER_FALLBACK_MS`
+- `SPORTS_API_SOFT_LIMIT_PERCENT`
+- `SPORTS_SYNC_LOOKAHEAD_HOURS`
+- `SPORTS_SYNC_MAX_FIXTURES`
+- `SPORTS_SYNC_HISTORY_MAX_PAGES_PER_RUN`
 
 ## Scripts
 
@@ -65,6 +76,7 @@ npm run check
 - `npm run check`
 - `npm run migrate`
 - `npm run migrate:status`
+- `npm run sync:sports`
 
 ## Health endpoints
 
@@ -73,9 +85,17 @@ npm run check
 
 Documentacion publica: [docs/api/health-endpoints.md](./docs/api/health-endpoints.md)
 
+## Sports endpoints
+
+- `GET /api/competitions`
+- `GET /api/fixtures/today`
+- `GET /api/fixtures/:id`
+
+Documentacion publica: [docs/api/sports-endpoints.md](./docs/api/sports-endpoints.md)
+
 ## Migraciones
 
-La infraestructura inicial de migraciones y la tabla `system_runs` se documentan en [docs/database/migrations.md](./docs/database/migrations.md).
+La infraestructura de migraciones, `system_runs` y las tablas base de ingesta deportiva se documentan en [docs/database/migrations.md](./docs/database/migrations.md).
 
 ## Seguridad de dependencias
 

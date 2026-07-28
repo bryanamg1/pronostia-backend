@@ -1,4 +1,5 @@
 import { createScheduler } from '../src/infrastructure/scheduler/createScheduler.js'
+import { createRunScheduledSportsSyncUseCase } from '../src/application/sports/runScheduledSportsSync.js'
 import { createRunScheduledSystemCheckUseCase } from '../src/application/system/runScheduledSystemCheck.js'
 import { createTestLogger } from './helpers/createTestLogger.js'
 
@@ -66,5 +67,33 @@ describe('scheduler', () => {
         entry.message.includes('Scheduler foundation job executed')
       )
     ).toBe(true)
+  })
+
+  test('scheduled sports sync records the run result', async () => {
+    const { logger } = createTestLogger()
+    const finishedRuns = []
+    const useCase = createRunScheduledSportsSyncUseCase({
+      logger,
+      systemRunRepository: {
+        savePreparedRun: async () => null,
+        markRunFinished: async (run) => {
+          finishedRuns.push(run)
+          return run
+        }
+      },
+      syncSportsData: async () => ({
+        status: 'completed',
+        fixturesSelected: 3
+      }),
+      generateRunId: () => 'sports-run-1',
+      now: () => new Date('2026-07-28T00:00:00.000Z')
+    })
+
+    const result = await useCase()
+
+    expect(result.run.runId).toBe('sports-run-1')
+    expect(result.result.status).toBe('completed')
+    expect(finishedRuns).toHaveLength(1)
+    expect(finishedRuns[0].status).toBe('COMPLETED')
   })
 })

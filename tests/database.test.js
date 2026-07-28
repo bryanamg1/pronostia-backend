@@ -144,6 +144,22 @@ describe('database foundation', () => {
           return [[], []]
         }
 
+        if (sql.includes('CREATE TABLE IF NOT EXISTS competitions')) {
+          return [[], []]
+        }
+
+        if (sql.includes('CREATE TABLE IF NOT EXISTS teams')) {
+          return [[], []]
+        }
+
+        if (sql.includes('CREATE TABLE IF NOT EXISTS fixtures')) {
+          return [[], []]
+        }
+
+        if (sql.includes('CREATE TABLE IF NOT EXISTS sports_sync_state')) {
+          return [[], []]
+        }
+
         throw new Error(`Unexpected SQL: ${sql}`)
       }
     }
@@ -193,6 +209,16 @@ describe('database foundation', () => {
     expect(
       executedStatements.filter((statement) =>
         statement.includes('CREATE TABLE IF NOT EXISTS system_runs')
+      )
+    ).toHaveLength(1)
+    expect(
+      executedStatements.filter((statement) =>
+        statement.includes('CREATE TABLE IF NOT EXISTS competitions')
+      )
+    ).toHaveLength(1)
+    expect(
+      executedStatements.filter((statement) =>
+        statement.includes('CREATE TABLE IF NOT EXISTS fixtures')
       )
     ).toHaveLength(1)
     expect(writes.length).toBeGreaterThan(0)
