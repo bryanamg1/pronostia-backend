@@ -12,7 +12,7 @@ export function createTestRoutes() {
   })
 
   router.get('/unexpected-error', () => {
-    throw new Error('DB_PASSWORD=secret')
+    throw new Error('sensitive-value')
   })
 
   return router
