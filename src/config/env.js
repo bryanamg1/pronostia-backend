@@ -9,6 +9,16 @@ import {
   DEFAULT_RATE_LIMIT_MAX_REQUESTS,
   DEFAULT_RATE_LIMIT_WINDOW_MS
 } from '../shared/constants/http.js'
+import {
+  DEFAULT_SPORTS_API_BASE_URL,
+  DEFAULT_SPORTS_API_MIN_INTERVAL_MS,
+  DEFAULT_SPORTS_API_PROVIDER,
+  DEFAULT_SPORTS_API_RETRY_AFTER_FALLBACK_MS,
+  DEFAULT_SPORTS_API_SOFT_LIMIT_PERCENT,
+  DEFAULT_SPORTS_SYNC_HISTORY_MAX_PAGES_PER_RUN,
+  DEFAULT_SPORTS_SYNC_LOOKAHEAD_HOURS,
+  DEFAULT_SPORTS_SYNC_MAX_FIXTURES
+} from '../shared/constants/sports.js'
 
 export function bootstrapEnv({
   env = process.env,
@@ -30,6 +40,7 @@ export function loadEnv({ env = process.env, shouldLoadDotenv = true } = {}) {
     env,
     shouldLoadDotenv
   })
+  const defaultSportsSeason = new Date().getUTCFullYear()
 
   const parsed = runtimeEnvSchema.safeParse({
     NODE_ENV: runtimeEnv.NODE_ENV,
@@ -47,7 +58,31 @@ export function loadEnv({ env = process.env, shouldLoadDotenv = true } = {}) {
     RATE_LIMIT_WINDOW_MS:
       runtimeEnv.RATE_LIMIT_WINDOW_MS ?? DEFAULT_RATE_LIMIT_WINDOW_MS,
     RATE_LIMIT_MAX_REQUESTS:
-      runtimeEnv.RATE_LIMIT_MAX_REQUESTS ?? DEFAULT_RATE_LIMIT_MAX_REQUESTS
+      runtimeEnv.RATE_LIMIT_MAX_REQUESTS ?? DEFAULT_RATE_LIMIT_MAX_REQUESTS,
+    SPORTS_API_PROVIDER:
+      runtimeEnv.SPORTS_API_PROVIDER ?? DEFAULT_SPORTS_API_PROVIDER,
+    SPORTS_API_BASE_URL:
+      runtimeEnv.SPORTS_API_BASE_URL ?? DEFAULT_SPORTS_API_BASE_URL,
+    SPORTS_API_KEY: runtimeEnv.SPORTS_API_KEY ?? '',
+    SPORTS_DEFAULT_SEASON:
+      runtimeEnv.SPORTS_DEFAULT_SEASON ?? defaultSportsSeason,
+    SPORTS_API_MIN_INTERVAL_MS:
+      runtimeEnv.SPORTS_API_MIN_INTERVAL_MS ??
+      DEFAULT_SPORTS_API_MIN_INTERVAL_MS,
+    SPORTS_API_RETRY_AFTER_FALLBACK_MS:
+      runtimeEnv.SPORTS_API_RETRY_AFTER_FALLBACK_MS ??
+      DEFAULT_SPORTS_API_RETRY_AFTER_FALLBACK_MS,
+    SPORTS_API_SOFT_LIMIT_PERCENT:
+      runtimeEnv.SPORTS_API_SOFT_LIMIT_PERCENT ??
+      DEFAULT_SPORTS_API_SOFT_LIMIT_PERCENT,
+    SPORTS_SYNC_LOOKAHEAD_HOURS:
+      runtimeEnv.SPORTS_SYNC_LOOKAHEAD_HOURS ??
+      DEFAULT_SPORTS_SYNC_LOOKAHEAD_HOURS,
+    SPORTS_SYNC_MAX_FIXTURES:
+      runtimeEnv.SPORTS_SYNC_MAX_FIXTURES ?? DEFAULT_SPORTS_SYNC_MAX_FIXTURES,
+    SPORTS_SYNC_HISTORY_MAX_PAGES_PER_RUN:
+      runtimeEnv.SPORTS_SYNC_HISTORY_MAX_PAGES_PER_RUN ??
+      DEFAULT_SPORTS_SYNC_HISTORY_MAX_PAGES_PER_RUN
   })
 
   if (!parsed.success) {
@@ -77,6 +112,21 @@ export function loadEnv({ env = process.env, shouldLoadDotenv = true } = {}) {
     http: {
       rateLimitWindowMs: parsed.data.RATE_LIMIT_WINDOW_MS,
       rateLimitMaxRequests: parsed.data.RATE_LIMIT_MAX_REQUESTS
+    },
+    sports: {
+      configured: Boolean(parsed.data.SPORTS_API_KEY),
+      provider: parsed.data.SPORTS_API_PROVIDER,
+      baseUrl: parsed.data.SPORTS_API_BASE_URL,
+      apiKey: parsed.data.SPORTS_API_KEY,
+      defaultSeason: parsed.data.SPORTS_DEFAULT_SEASON,
+      minIntervalMs: parsed.data.SPORTS_API_MIN_INTERVAL_MS,
+      retryAfterFallbackMs: parsed.data.SPORTS_API_RETRY_AFTER_FALLBACK_MS,
+      softLimitPercent: parsed.data.SPORTS_API_SOFT_LIMIT_PERCENT,
+      sync: {
+        lookaheadHours: parsed.data.SPORTS_SYNC_LOOKAHEAD_HOURS,
+        maxFixtures: parsed.data.SPORTS_SYNC_MAX_FIXTURES,
+        historyMaxPagesPerRun: parsed.data.SPORTS_SYNC_HISTORY_MAX_PAGES_PER_RUN
+      }
     },
     database: {
       configured: hasDatabaseConfig,

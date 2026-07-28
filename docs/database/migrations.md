@@ -24,6 +24,22 @@ npm run migrate:status
 
 Si la configuracion de MySQL no esta completa o las credenciales no son validas, el comando responde con un resultado controlado o un error sanitizado. No se deben publicar credenciales ni connection strings completas.
 
+## Tablas gestionadas actualmente
+
+- `system_runs`
+- `competitions`
+- `teams`
+- `fixtures`
+- `sports_sync_state`
+
+## Alcance actual
+
+- `system_runs` registra la ejecucion preparada y el cierre del scheduler.
+- `competitions` persiste el catalogo autorizado sincronizado contra API-Football.
+- `teams` mantiene el cache persistente minimo de equipos observados en fixtures.
+- `fixtures` concentra tanto la ventana diaria como el historico por temporada que se vaya backfilleando de forma incremental.
+- `sports_sync_state` guarda checkpoints durables para evitar rehacer paginas historicas ya sincronizadas.
+
 ## Revertir
 
 La infraestructura de migraciones inicial define una operacion `down` para revertir `system_runs` cuando resulte razonable y seguro usarla desde una sesion controlada.
