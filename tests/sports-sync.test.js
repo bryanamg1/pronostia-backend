@@ -52,72 +52,72 @@ describe('sports sync use case', () => {
             }
           }
         },
-        async getFixturesByDateRange({ leagueId }) {
-          if (leagueId === 140) {
-            return {
-              data: {
-                response: [
-                  {
-                    fixture: {
-                      id: 1,
-                      date: '2026-07-28T10:00:00.000Z',
-                      update: '2026-07-28T09:00:00.000Z',
-                      status: {
-                        short: 'NS'
-                      }
-                    },
-                    goals: {
-                      home: null,
-                      away: null
-                    },
-                    teams: {
-                      home: {
-                        id: 10,
-                        name: 'Team 10',
-                        logo: 'logo-10'
-                      },
-                      away: {
-                        id: 11,
-                        name: 'Team 11',
-                        logo: 'logo-11'
-                      }
-                    }
-                  },
-                  {
-                    fixture: {
-                      id: 2,
-                      date: '2026-07-28T12:00:00.000Z',
-                      update: '2026-07-28T11:00:00.000Z',
-                      status: {
-                        short: 'NS'
-                      }
-                    },
-                    goals: {
-                      home: null,
-                      away: null
-                    },
-                    teams: {
-                      home: {
-                        id: 12,
-                        name: 'Team 12',
-                        logo: 'logo-12'
-                      },
-                      away: {
-                        id: 13,
-                        name: 'Team 13',
-                        logo: 'logo-13'
-                      }
-                    }
-                  }
-                ]
-              }
-            }
-          }
-
+        async getFixturesByDateRange() {
           return {
             data: {
               response: [
                 {
+                  league: {
+                    id: 140
+                  },
+                  fixture: {
+                    id: 1,
+                    date: '2026-07-28T10:00:00.000Z',
+                    update: '2026-07-28T09:00:00.000Z',
+                    status: {
+                      short: 'NS'
+                    }
+                  },
+                  goals: {
+                    home: null,
+                    away: null
+                  },
+                  teams: {
+                    home: {
+                      id: 10,
+                      name: 'Team 10',
+                      logo: 'logo-10'
+                    },
+                    away: {
+                      id: 11,
+                      name: 'Team 11',
+                      logo: 'logo-11'
+                    }
+                  }
+                },
+                {
+                  league: {
+                    id: 140
+                  },
+                  fixture: {
+                    id: 2,
+                    date: '2026-07-28T12:00:00.000Z',
+                    update: '2026-07-28T11:00:00.000Z',
+                    status: {
+                      short: 'NS'
+                    }
+                  },
+                  goals: {
+                    home: null,
+                    away: null
+                  },
+                  teams: {
+                    home: {
+                      id: 12,
+                      name: 'Team 12',
+                      logo: 'logo-12'
+                    },
+                    away: {
+                      id: 13,
+                      name: 'Team 13',
+                      logo: 'logo-13'
+                    }
+                  }
+                },
+                {
+                  league: {
+                    id: 2
+                  },
                   fixture: {
                     id: 2,
                     date: '2026-07-28T12:00:00.000Z',
@@ -144,6 +144,9 @@ describe('sports sync use case', () => {
                   }
                 },
                 {
+                  league: {
+                    id: 2
+                  },
                   fixture: {
                     id: 3,
                     date: '2026-07-28T14:00:00.000Z',
@@ -166,6 +169,64 @@ describe('sports sync use case', () => {
                       id: 17,
                       name: 'Team 17',
                       logo: 'logo-17'
+                    }
+                  }
+                },
+                {
+                  league: {
+                    id: 999
+                  },
+                  fixture: {
+                    id: 4,
+                    date: '2026-07-28T16:00:00.000Z',
+                    update: '2026-07-28T15:00:00.000Z',
+                    status: {
+                      short: 'NS'
+                    }
+                  },
+                  goals: {
+                    home: null,
+                    away: null
+                  },
+                  teams: {
+                    home: {
+                      id: 18,
+                      name: 'Team 18',
+                      logo: 'logo-18'
+                    },
+                    away: {
+                      id: 19,
+                      name: 'Team 19',
+                      logo: 'logo-19'
+                    }
+                  }
+                },
+                {
+                  league: {
+                    id: 140
+                  },
+                  fixture: {
+                    id: 5,
+                    date: '2026-07-30T10:00:00.000Z',
+                    update: '2026-07-30T09:00:00.000Z',
+                    status: {
+                      short: 'NS'
+                    }
+                  },
+                  goals: {
+                    home: null,
+                    away: null
+                  },
+                  teams: {
+                    home: {
+                      id: 20,
+                      name: 'Team 20',
+                      logo: 'logo-20'
+                    },
+                    away: {
+                      id: 21,
+                      name: 'Team 21',
+                      logo: 'logo-21'
                     }
                   }
                 }
@@ -217,22 +278,17 @@ describe('sports sync use case', () => {
             plan: 'Free',
             current: 10,
             limitDay: 100,
-            conservativeCurrent: 15,
-            remaining: 85
+            conservativeCurrent: 14,
+            remaining: 86
           }
         }
       },
       competitionRepository: {
         async upsertCompetition(competition) {
-          const stored = {
+          return {
             ...competition,
-            id: storedCompetitions.size + 1
+            id: competition.providerId
           }
-          storedCompetitions.set(
-            `${competition.providerId}:${competition.season}`,
-            stored
-          )
-          return stored
         }
       },
       teamRepository: {
@@ -295,6 +351,152 @@ describe('sports sync use case', () => {
     expect(result.teamsPersisted).toBeGreaterThanOrEqual(6)
     expect(storedFixtures).toHaveLength(3)
     expect(syncStates).toHaveLength(1)
+  })
+
+  test('continues with no_fixtures when global feed only returns non-authorized leagues', async () => {
+    const { logger } = createTestLogger()
+    const useCase = createSyncSportsDataUseCase({
+      logger,
+      sportsApiClient: {
+        async getStatus() {
+          return {
+            data: {
+              response: {
+                subscription: {
+                  plan: 'Free'
+                },
+                requests: {
+                  current: 10,
+                  limit_day: 100
+                }
+              }
+            }
+          }
+        },
+        async getLeague({ providerId }) {
+          return {
+            data: {
+              response: [
+                {
+                  league: {
+                    id: providerId,
+                    name: `League ${providerId}`
+                  },
+                  country: {
+                    name: 'World'
+                  },
+                  seasons: [
+                    {
+                      year: 2026,
+                      coverage: {
+                        fixtures: true
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        async getFixturesByDateRange() {
+          return {
+            data: {
+              response: [
+                {
+                  league: {
+                    id: 999
+                  },
+                  fixture: {
+                    id: 50,
+                    date: '2026-07-28T10:00:00.000Z',
+                    update: '2026-07-28T09:00:00.000Z',
+                    status: {
+                      short: 'NS'
+                    }
+                  },
+                  goals: {
+                    home: null,
+                    away: null
+                  },
+                  teams: {
+                    home: {
+                      id: 100,
+                      name: 'Team 100',
+                      logo: 'logo-100'
+                    },
+                    away: {
+                      id: 101,
+                      name: 'Team 101',
+                      logo: 'logo-101'
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        getQuotaSnapshot() {
+          return {
+            plan: 'Free',
+            current: 10,
+            limitDay: 100,
+            conservativeCurrent: 13,
+            remaining: 85
+          }
+        }
+      },
+      competitionRepository: {
+        async upsertCompetition(competition) {
+          return {
+            ...competition,
+            id: competition.providerId
+          }
+        }
+      },
+      teamRepository: {
+        async upsertTeam() {}
+      },
+      fixtureRepository: {
+        async upsertFixture() {}
+      },
+      sportsSyncStateRepository: {
+        async findByKey() {
+          return {
+            completed: true
+          }
+        }
+      },
+      databaseConfigured: true,
+      timezone: 'America/Argentina/Buenos_Aires',
+      defaultSeason: 2026,
+      lookaheadHours: 24,
+      maxFixtures: 2,
+      historyMaxPagesPerRun: 1,
+      now: () => new Date('2026-07-28T00:00:00.000Z'),
+      authorizedCompetitions: [
+        {
+          key: 'laliga',
+          providerId: 140,
+          name: 'La Liga',
+          country: 'Spain'
+        },
+        {
+          key: 'uefa-champions-league',
+          providerId: 2,
+          name: 'UEFA Champions League',
+          country: 'World'
+        }
+      ]
+    })
+
+    const result = await useCase({
+      trigger: 'test'
+    })
+
+    expect(result.status).toBe('no_fixtures')
+    expect(result.fixturesFound).toBe(0)
+    expect(result.fixturesSelected).toBe(0)
+    expect(result.teamsPersisted).toBe(0)
   })
 
   test('skips the sync when the provider is not configured', async () => {

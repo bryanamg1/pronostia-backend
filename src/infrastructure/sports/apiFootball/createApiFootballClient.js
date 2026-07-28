@@ -252,24 +252,16 @@ export function createApiFootballClient({
       )
     },
 
-    async getFixturesByDateRange({
-      leagueId,
-      season,
-      fromDate,
-      toDate,
-      timezone
-    }) {
+    async getFixturesByDateRange({ fromDate, toDate, timezone }) {
       return apiGet(
         'fixtures',
         {
-          league: leagueId,
-          season,
           from: fromDate,
           to: toDate,
           timezone
         },
         {
-          step: `fixtures:${leagueId}:${season}`
+          step: `fixtures:${fromDate}:${toDate}`
         }
       )
     },
