@@ -10,28 +10,44 @@ import {
   DEFAULT_RATE_LIMIT_WINDOW_MS
 } from '../shared/constants/http.js'
 
-export function loadEnv({ env = process.env, shouldLoadDotenv = true } = {}) {
+export function bootstrapEnv({
+  env = process.env,
+  shouldLoadDotenv = true
+} = {}) {
   if (shouldLoadDotenv && env.NODE_ENV !== 'test') {
-    dotenv.config()
+    dotenv.config({
+      processEnv: env,
+      override: false,
+      quiet: true
+    })
   }
 
+  return env
+}
+
+export function loadEnv({ env = process.env, shouldLoadDotenv = true } = {}) {
+  const runtimeEnv = bootstrapEnv({
+    env,
+    shouldLoadDotenv
+  })
+
   const parsed = runtimeEnvSchema.safeParse({
-    NODE_ENV: env.NODE_ENV,
-    PORT: env.PORT,
-    FRONTEND_URL: env.FRONTEND_URL,
-    LOG_LEVEL: env.LOG_LEVEL,
-    TIMEZONE: env.TIMEZONE,
-    DB_HOST: env.DB_HOST,
-    DB_PORT: env.DB_PORT,
-    DB_USER: env.DB_USER,
-    DB_PASSWORD: env.DB_PASSWORD,
-    DB_NAME: env.DB_NAME,
-    SCHEDULER_ENABLED: env.SCHEDULER_ENABLED ?? false,
-    SCHEDULER_CRON: env.SCHEDULER_CRON ?? '0 6 * * *',
+    NODE_ENV: runtimeEnv.NODE_ENV,
+    PORT: runtimeEnv.PORT,
+    FRONTEND_URL: runtimeEnv.FRONTEND_URL,
+    LOG_LEVEL: runtimeEnv.LOG_LEVEL,
+    TIMEZONE: runtimeEnv.TIMEZONE,
+    DB_HOST: runtimeEnv.DB_HOST,
+    DB_PORT: runtimeEnv.DB_PORT,
+    DB_USER: runtimeEnv.DB_USER,
+    DB_PASSWORD: runtimeEnv.DB_PASSWORD,
+    DB_NAME: runtimeEnv.DB_NAME,
+    SCHEDULER_ENABLED: runtimeEnv.SCHEDULER_ENABLED ?? false,
+    SCHEDULER_CRON: runtimeEnv.SCHEDULER_CRON ?? '0 6 * * *',
     RATE_LIMIT_WINDOW_MS:
-      env.RATE_LIMIT_WINDOW_MS ?? DEFAULT_RATE_LIMIT_WINDOW_MS,
+      runtimeEnv.RATE_LIMIT_WINDOW_MS ?? DEFAULT_RATE_LIMIT_WINDOW_MS,
     RATE_LIMIT_MAX_REQUESTS:
-      env.RATE_LIMIT_MAX_REQUESTS ?? DEFAULT_RATE_LIMIT_MAX_REQUESTS
+      runtimeEnv.RATE_LIMIT_MAX_REQUESTS ?? DEFAULT_RATE_LIMIT_MAX_REQUESTS
   })
 
   if (!parsed.success) {

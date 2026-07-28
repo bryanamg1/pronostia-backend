@@ -33,6 +33,34 @@ describe('database foundation', () => {
     await expect(poolManager.close()).resolves.toBe(false)
   })
 
+  test('pool creation remains lazy until a database action requests it', () => {
+    const { logger } = createTestLogger()
+    let createPoolCalls = 0
+
+    createMySqlPoolManager({
+      config: {
+        configured: true,
+        host: 'localhost',
+        port: 3306,
+        user: 'root',
+        password: '',
+        name: 'pronostia'
+      },
+      logger,
+      createPool() {
+        createPoolCalls += 1
+        return {
+          async query() {
+            return [[], []]
+          },
+          async end() {}
+        }
+      }
+    })
+
+    expect(createPoolCalls).toBe(0)
+  })
+
   test('migration status can be validated without a configured production database', async () => {
     const { logger } = createTestLogger()
     const writes = []
