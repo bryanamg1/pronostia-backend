@@ -1,21 +1,14 @@
 # AGENTS
 
-- Leer completamente `blueprint-celula-hibrida.md` antes de trabajar.
-- Tratar el blueprint como fuente de verdad funcional, técnica y operativa.
-- Trabajar estrictamente por fases.
-- Solicitar autorización explícita antes de iniciar cada fase.
-- Toda tarea parte desde `develop`.
-- Usar ramas `bryan/<tipo>/<nombre-corto>`.
-- Tipos permitidos: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`.
-- No inventar endpoints, IDs de ligas, cuotas, estadísticas, proveedores ni credenciales.
-- No implementar apuestas automáticas.
-- No iniciar sesión ni navegar por Bet365 o Betano.
-- No implementar apuestas en vivo.
-- No incluir lesiones, suspensiones ni alineaciones en el MVP.
-- OpenAI solo explica resultados matemáticos ya calculados.
-- Los cálculos deben ejecutarse con código determinista y testeable.
-- Ejecutar tests, lint y validaciones antes de merges.
-- Documentar todos los cambios realizados.
-- No realizar operaciones destructivas.
-- No usar force push sin autorización explícita.
-- No exponer secretos en código, documentación ni logs.
+- Respect `blueprint-celula-hibrida.md` as the functional source of truth.
+- Preserve the backend layered architecture: `config`, `domain`, `application`, `infrastructure`, `presentation`, `shared`.
+- Start every public task from `develop`.
+- Use branches named `bryan/<type>/<short-name>`.
+- Allowed branch types: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`.
+- Require explicit authorization before starting or merging a phase.
+- Keep business rules out of routes, controllers, middlewares, repositories, and HTTP clients.
+- Run tests and required validations before merge.
+- Do not expose secrets in code, documentation, commits, or logs.
+- Do not implement automatic betting flows or live betting behavior.
+- OpenAI may explain deterministic results in future phases, but must not calculate core probabilities.
+- Do not include private local operational information in tracked repository files.

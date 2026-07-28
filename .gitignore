@@ -8,6 +8,8 @@ build/
 logs/
 *.log
 codex.local.instructions.txt
+.codex-local/
+local-docs/
 .discovery-checkpoints/
 docs/discovery-output/
 .DS_Store
