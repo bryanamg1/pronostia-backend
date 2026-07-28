@@ -31,6 +31,9 @@ Si la configuracion de MySQL no esta completa o las credenciales no son validas,
 - `teams`
 - `fixtures`
 - `sports_sync_state`
+- `model_versions`
+- `historical_predictions`
+- `model_evaluations`
 
 ## Alcance actual
 
@@ -39,6 +42,9 @@ Si la configuracion de MySQL no esta completa o las credenciales no son validas,
 - `teams` mantiene el cache persistente minimo de equipos observados en fixtures.
 - `fixtures` concentra tanto la ventana diaria como el historico por temporada que se vaya backfilleando de forma incremental.
 - `sports_sync_state` guarda checkpoints durables para evitar rehacer paginas historicas ya sincronizadas.
+- `model_versions` versiona parametros reproducibles del motor estadistico.
+- `historical_predictions` persiste predicciones historicas auditables con su cutoff temporal.
+- `model_evaluations` registra metricas agregadas de backtesting cronologico por competicion y temporada.
 
 ## Revertir
 
