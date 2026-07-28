@@ -294,18 +294,22 @@ export function createSyncSportsDataUseCase({
       persistedFixtures += 1
     }
 
-    const status =
+    const noFixturesAvailable =
       orderedDailyFixtures.length === 0 && errors.length === 0
-        ? 'no_fixtures'
-        : errors.length > 0 || stopReason
-          ? 'partial'
-          : 'completed'
+    const status = noFixturesAvailable
+      ? 'completed'
+      : errors.length > 0 || stopReason
+        ? 'partial'
+        : 'completed'
 
     const result = {
       status,
       trigger,
       startedAt: startedAt.toISOString(),
       season,
+      result: noFixturesAvailable
+        ? 'no_fixtures_available'
+        : 'fixtures_processed',
       competitionsSynced,
       fixturesFound: totalDailyCandidates,
       fixturesSelected: orderedDailyFixtures.length,
@@ -313,6 +317,7 @@ export function createSyncSportsDataUseCase({
       duplicatesDiscarded,
       teamsPersisted: persistedTeams.size,
       historyPagesProcessed,
+      openAiInvoked: false,
       quota: sportsApiClient.getQuotaSnapshot(),
       errors,
       stopReason

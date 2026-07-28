@@ -344,11 +344,13 @@ describe('sports sync use case', () => {
     })
 
     expect(result.status).toBe('completed')
+    expect(result.result).toBe('fixtures_processed')
     expect(result.fixturesFound).toBe(4)
     expect(result.fixturesSelected).toBe(2)
     expect(result.duplicatesDiscarded).toBe(1)
     expect(result.historyPagesProcessed).toBe(1)
     expect(result.teamsPersisted).toBeGreaterThanOrEqual(6)
+    expect(result.openAiInvoked).toBe(false)
     expect(storedFixtures).toHaveLength(3)
     expect(syncStates).toHaveLength(1)
   })
@@ -493,10 +495,12 @@ describe('sports sync use case', () => {
       trigger: 'test'
     })
 
-    expect(result.status).toBe('no_fixtures')
+    expect(result.status).toBe('completed')
+    expect(result.result).toBe('no_fixtures_available')
     expect(result.fixturesFound).toBe(0)
     expect(result.fixturesSelected).toBe(0)
     expect(result.teamsPersisted).toBe(0)
+    expect(result.openAiInvoked).toBe(false)
   })
 
   test('skips the sync when the provider is not configured', async () => {

@@ -2,12 +2,15 @@ import { createSystemRun } from '../../domain/system/SystemRun.js'
 import { toErrorLogPayload } from '../../shared/utils/sanitize.js'
 
 function mapSyncResultToRunStatus(result) {
-  if (result.status === 'completed') {
-    return 'COMPLETED'
+  if (
+    result.status === 'completed' &&
+    result.result === 'no_fixtures_available'
+  ) {
+    return 'NO_FIXTURES'
   }
 
-  if (result.status === 'no_fixtures') {
-    return 'NO_FIXTURES'
+  if (result.status === 'completed') {
+    return 'COMPLETED'
   }
 
   if (result.status === 'skipped') {
