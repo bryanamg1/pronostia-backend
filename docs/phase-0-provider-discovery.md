@@ -4,7 +4,7 @@
 
 En curso. Esta fase deja evidencia publica verificada, scripts de validacion y una matriz inicial de descubrimiento.
 
-La verificacion empirica contra la API sigue bloqueada hasta contar con `SPORTS_API_KEY` en el entorno local.
+La validacion empirica esta parcialmente habilitada. Ya existe evidencia local de autenticacion y cuota, pero la validacion completa no debe ejecutarse en rafaga.
 
 ## Objetivo
 
@@ -54,6 +54,9 @@ Validar si API-Football puede sostener el MVP de PronostIA sin acoplar la arquit
 - `SPORTS_API_KEY`
 - `SPORTS_API_BASE_URL`
 - `SPORTS_API_PROVIDER`
+- `SPORTS_API_MIN_INTERVAL_MS`
+- `DISCOVERY_SMOKE_TEST`
+- `SPORTS_API_SOFT_LIMIT_PERCENT`
 
 ## Dependencias
 
@@ -81,6 +84,12 @@ Validar si API-Football puede sostener el MVP de PronostIA sin acoplar la arquit
 ### API-Football
 
 - A fecha de verificacion local, API-Football publica documentacion `v3.9.3`.
+- Evidencia empirica local confirmada:
+  - `SPORTS_API_KEY` valida;
+  - endpoint `/status` con `HTTP 200`;
+  - plan observado: `Free`;
+  - consumo observado: `10/100` requests;
+  - causa de fallo observada en la validacion inicial: `HTTP 429` por limite de requests por minuto.
 - El pricing publico muestra:
   - Free: `100 requests/day`
   - Pro: `7,500 requests/day`
@@ -154,6 +163,12 @@ Resumen actual:
 ## Estrategia de degradacion propuesta
 
 - Si no hay fixtures elegibles: terminar corrida sin invocar OpenAI.
+- Si aparece `HTTP 429` por limite por minuto:
+  - ejecutar todas las solicitudes de discovery de forma secuencial;
+  - respetar `Retry-After`;
+  - si el header no existe, esperar `65000 ms`;
+  - reintentar como maximo dos veces;
+  - detener la corrida de discovery de forma controlada si el 429 persiste.
 - Si la cobertura de odds es insuficiente para una competicion:
   - permitir analisis sin recomendacion;
   - admitir carga manual de Betano en fases posteriores.
@@ -175,13 +190,15 @@ Resumen actual:
 
 ## Bloqueos vigentes
 
-- Falta `SPORTS_API_KEY` para ejecutar la validacion real.
-- Sin credenciales no es posible completar:
-  - ids verificados;
-  - temporadas verificadas;
-  - bookmakers disponibles;
-  - disponibilidad real de Bet365 y Betano;
-  - probes de fixtures, team statistics y odds.
+- La credencial ya no es el bloqueo principal.
+- El bloqueo actual es operativo:
+  - falta completar la validacion autentica con pacing secuencial y checkpoint local;
+  - siguen pendientes:
+    - ids verificados;
+    - temporadas verificadas;
+    - bookmakers disponibles completos;
+    - disponibilidad real de Bet365 y Betano;
+    - probes de fixtures, team statistics y odds.
 
 ## Decision provisional de proveedor
 
@@ -211,7 +228,20 @@ No existe decision final de go/no-go todavia porque faltan pruebas autenticadas 
 ```powershell
 node .\scripts\discovery\estimate-request-budget.js
 node .\scripts\discovery\validate-api-football.js
+DISCOVERY_SMOKE_TEST=true SPORTS_API_MIN_INTERVAL_MS=7000 node .\scripts\discovery\validate-api-football.js
 ```
+
+## Evidencia operativa y controles agregados
+
+- Discovery HTTP completamente secuencial.
+- `SPORTS_API_MIN_INTERVAL_MS` configurable; default `7000 ms`.
+- Sin `Promise.all` ni solicitudes paralelas.
+- Lectura de `Retry-After`.
+- Fallback a `65000 ms` si `Retry-After` no existe.
+- Maximo de dos reintentos ante `HTTP 429`.
+- Checkpoint local ignorado por Git para no repetir pasos exitosos.
+- `DISCOVERY_SMOKE_TEST=true` para modo reducido.
+- Tests simulados con `node:test`, sin consumo de API real.
 
 ## Resultado esperado al cerrar Fase 0
 

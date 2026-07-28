@@ -8,6 +8,8 @@ build/
 logs/
 *.log
 codex.local.instructions.txt
+.discovery-checkpoints/
+docs/discovery-output/
 .DS_Store
 Thumbs.db
 .vscode/
