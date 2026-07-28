@@ -10,7 +10,10 @@ export async function startServer(options = {}) {
     env: runtime.env,
     logger: runtime.logger,
     getHealthStatus: runtime.useCases.getHealthStatus,
-    getReadinessStatus: runtime.useCases.getReadinessStatus
+    getReadinessStatus: runtime.useCases.getReadinessStatus,
+    listCompetitions: runtime.useCases.listCompetitions,
+    listTodayFixtures: runtime.useCases.listTodayFixtures,
+    getFixtureById: runtime.useCases.getFixtureById
   })
 
   const server = await new Promise((resolve) => {

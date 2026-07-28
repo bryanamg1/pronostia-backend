@@ -13,6 +13,21 @@ export function createTestEnv(overrides = {}) {
       rateLimitWindowMs: 60_000,
       rateLimitMaxRequests: 2
     },
+    sports: {
+      configured: false,
+      provider: 'api-football',
+      baseUrl: 'https://v3.football.api-sports.io',
+      apiKey: '',
+      defaultSeason: 2026,
+      minIntervalMs: 7000,
+      retryAfterFallbackMs: 65000,
+      softLimitPercent: 80,
+      sync: {
+        lookaheadHours: 24,
+        maxFixtures: 40,
+        historyMaxPagesPerRun: 2
+      }
+    },
     database: {
       configured: false,
       host: '',
