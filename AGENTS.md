@@ -1,0 +1,21 @@
+# AGENTS
+
+- Leer completamente `blueprint-celula-hibrida.md` antes de trabajar.
+- Tratar el blueprint como fuente de verdad funcional, técnica y operativa.
+- Trabajar estrictamente por fases.
+- Solicitar autorización explícita antes de iniciar cada fase.
+- Toda tarea parte desde `develop`.
+- Usar ramas `bryan/<tipo>/<nombre-corto>`.
+- Tipos permitidos: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`.
+- No inventar endpoints, IDs de ligas, cuotas, estadísticas, proveedores ni credenciales.
+- No implementar apuestas automáticas.
+- No iniciar sesión ni navegar por Bet365 o Betano.
+- No implementar apuestas en vivo.
+- No incluir lesiones, suspensiones ni alineaciones en el MVP.
+- OpenAI solo explica resultados matemáticos ya calculados.
+- Los cálculos deben ejecutarse con código determinista y testeable.
+- Ejecutar tests, lint y validaciones antes de merges.
+- Documentar todos los cambios realizados.
+- No realizar operaciones destructivas.
+- No usar force push sin autorización explícita.
+- No exponer secretos en código, documentación ni logs.

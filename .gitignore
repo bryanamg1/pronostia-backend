@@ -1,0 +1,14 @@
+node_modules/
+.env
+.env.*
+!.env.example
+coverage/
+dist/
+build/
+logs/
+*.log
+codex.local.instructions.txt
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
