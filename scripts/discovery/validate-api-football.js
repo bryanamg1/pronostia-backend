@@ -335,6 +335,35 @@ function buildBookmakerAvailability(catalogListed) {
   };
 }
 
+function classifyCompetitionStatus(result) {
+  if (!result.leagueId || !result.season) {
+    return "NOT_AVAILABLE";
+  }
+
+  const fixturesResults = result.fixturesProbe?.results ?? 0;
+  const teamsResults = result.teamsProbe?.results ?? 0;
+  const oddsResults = result.oddsProbe?.results ?? 0;
+  const teamStatisticsAvailable = Boolean(result.teamStatisticsProbe?.hasResponse);
+  const standingsAvailable = result.coverage?.standings === true;
+  const fixtureStatisticsAvailable =
+    result.coverage?.fixtures?.statistics_fixtures === true;
+  const oddsDeclared = result.coverage?.odds === true;
+
+  if (
+    fixturesResults > 0 &&
+    teamsResults > 0 &&
+    standingsAvailable &&
+    fixtureStatisticsAvailable &&
+    teamStatisticsAvailable &&
+    oddsDeclared &&
+    oddsResults > 0
+  ) {
+    return "VERIFIED";
+  }
+
+  return "PARTIAL";
+}
+
 function extractHeaderQuotaObservations(requestLog) {
   return (Array.isArray(requestLog) ? requestLog : []).map((entry) => ({
     endpoint: entry.endpoint,
@@ -918,6 +947,11 @@ function createDiscoveryRunner(options = {}) {
         lookupUrl: leagueLookup.url,
         season,
         current: latestSeason?.current ?? null,
+        historicalSeasons: Array.isArray(candidate.seasons)
+          ? candidate.seasons
+              .map((item) => item?.year)
+              .filter((value) => Number.isFinite(value))
+          : [],
         coverage,
       };
 
@@ -992,7 +1026,7 @@ function createDiscoveryRunner(options = {}) {
         paging: oddsProbe.data?.paging ?? null,
       };
 
-      result.status = "verified";
+      result.status = classifyCompetitionStatus(result);
       return result;
     });
   }
@@ -1158,6 +1192,7 @@ module.exports = {
   STATUS_OBSERVATION,
   TARGET_COMPETITIONS,
   buildBookmakerAvailability,
+  classifyCompetitionStatus,
   buildPreflightReport,
   buildQuotaObservability,
   buildRuntimeConfig,

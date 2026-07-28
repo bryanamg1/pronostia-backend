@@ -10,6 +10,7 @@ const {
   QUOTA_CONFIDENCE,
   STATUS_OBSERVATION,
   buildBookmakerAvailability,
+  classifyCompetitionStatus,
   buildPreflightReport,
   buildQuotaObservability,
   createDiscoveryRunner,
@@ -119,6 +120,26 @@ test("bookmaker availability differentiates catalog from fixture evidence", () =
     competitionAvailability: BOOKMAKER_AVAILABILITY.INCONCLUSIVE,
     mvpMarketAvailability: BOOKMAKER_AVAILABILITY.INCONCLUSIVE,
   });
+});
+
+test("classifyCompetitionStatus keeps partial when there is no fixture evidence", () => {
+  const status = classifyCompetitionStatus({
+    leagueId: 140,
+    season: 2026,
+    coverage: {
+      standings: true,
+      odds: true,
+      fixtures: {
+        statistics_fixtures: true,
+      },
+    },
+    fixturesProbe: { results: 0 },
+    teamsProbe: { results: 0 },
+    oddsProbe: { results: 0 },
+    teamStatisticsProbe: { hasResponse: false },
+  });
+
+  assert.equal(status, "PARTIAL");
 });
 
 test("dry-run preflight reuses checkpoint and stays below soft limit with smoke-test evidence", () => {
