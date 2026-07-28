@@ -6,7 +6,8 @@ Backend de PronostIA para orquestar analisis prepartido de futbol, exponer una A
 
 - Fase 0 completada con decision publica `CONDITIONAL GO` para API-Football.
 - Fase 1 completada y fusionada en ramas estables.
-- Fase 2 en implementacion sobre ingesta deportiva acotada, cache historica y scheduler.
+- Fase 2 completada con cierre tecnico sobre ingesta deportiva acotada, cache historica y scheduler.
+- Restriccion externa conocida: la cuenta API-Football Free validada no tiene acceso a `season=2026` para las ligas trianguladas; la evidencia real disponible en esta fase fue historica.
 - No existen aun pronosticos, odds productivas ni OpenAI operativo.
 
 ## Stack
@@ -92,6 +93,7 @@ Documentacion publica: [docs/api/health-endpoints.md](./docs/api/health-endpoint
 - `GET /api/fixtures/:id`
 
 Documentacion publica: [docs/api/sports-endpoints.md](./docs/api/sports-endpoints.md)
+Documentacion operativa de ingesta/cache: [docs/sports-ingestion.md](./docs/sports-ingestion.md)
 
 ## Migraciones
 
