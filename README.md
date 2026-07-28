@@ -4,9 +4,9 @@ Backend planificado de PronostIA para orquestar el análisis prepartido de fútb
 
 ## Estado
 
-`Fase Bootstrap / planificación`
+`Fase 0 / discovery de proveedor en curso`
 
-Todavía no existe una implementación funcional del backend. Este repositorio contiene únicamente la base documental y operativa inicial.
+Todavia no existe una implementacion funcional del backend. El repositorio contiene bootstrap documental y artefactos de discovery previos a la implementacion.
 
 ## Propósito
 
@@ -33,6 +33,14 @@ El backend gestionará en fases posteriores:
 ## Blueprint oficial
 
 El blueprint fuente de verdad del proyecto está en [./blueprint-celula-hibrida.md](./blueprint-celula-hibrida.md).
+
+## Discovery actual
+
+Los artefactos de Fase 0 viven en:
+
+- [docs/phase-0-provider-discovery.md](./docs/phase-0-provider-discovery.md)
+- [docs/provider-discovery-matrix.csv](./docs/provider-discovery-matrix.csv)
+- `scripts/discovery/`
 
 ## Repositorio relacionado
 

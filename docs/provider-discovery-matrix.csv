@@ -1,0 +1,12 @@
+competition_key,display_name,provider_name_query,country_query,type_query,publicly_listed_on_coverage,league_id_verified,season_verified,fixtures_probe,team_statistics_probe,odds_probe,bookmakers_verified,bet365_available,betano_available,status,notes
+laliga,LaLiga,"La Liga",Spain,league,yes,pending,pending,pending,pending,pending,pending,pending,pending,pending,"Nombre listado publicamente; falta validacion autenticada"
+premier-league,Premier League,"Premier League",England,league,yes,pending,pending,pending,pending,pending,pending,pending,pending,pending,"Nombre listado publicamente; falta validacion autenticada"
+ligue-1,Ligue 1,"Ligue 1",France,league,yes,pending,pending,pending,pending,pending,pending,pending,pending,pending,"Nombre listado publicamente; falta validacion autenticada"
+serie-a-italy,Serie A,"Serie A",Italy,league,yes,pending,pending,pending,pending,pending,pending,pending,pending,pending,"Requiere diferenciar de Serie A Brasil"
+bundesliga,Bundesliga,Bundesliga,Germany,league,yes,pending,pending,pending,pending,pending,pending,pending,pending,pending,"Nombre listado publicamente; falta validacion autenticada"
+liga-profesional-arg,Liga Profesional Argentina,"Liga Profesional Argentina",Argentina,league,yes,pending,pending,pending,pending,pending,pending,pending,pending,pending,"Nombre listado publicamente; falta validacion autenticada"
+serie-a-brazil,Brasileirao,"Serie A",Brazil,league,yes,pending,pending,pending,pending,pending,pending,pending,pending,pending,"La cobertura publica usa 'Serie A'; falta validar si coincide con Brasileirao Serie A"
+uefa-champions-league,UEFA Champions League,"UEFA Champions League",,cup,yes,pending,pending,pending,pending,pending,pending,pending,pending,pending,"Nombre listado publicamente; falta validacion autenticada"
+uefa-europa-league,UEFA Europa League,"UEFA Europa League",,cup,yes,pending,pending,pending,pending,pending,pending,pending,pending,pending,"Nombre listado publicamente; falta validacion autenticada"
+conmebol-libertadores,Copa Libertadores,"CONMEBOL Libertadores",,cup,yes,pending,pending,pending,pending,pending,pending,pending,pending,pending,"La cobertura publica usa 'CONMEBOL Libertadores'"
+conmebol-sudamericana,Copa Sudamericana,"CONMEBOL Sudamericana",,cup,yes,pending,pending,pending,pending,pending,pending,pending,pending,pending,"La cobertura publica usa 'CONMEBOL Sudamericana'"
