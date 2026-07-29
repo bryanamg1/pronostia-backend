@@ -86,6 +86,12 @@ describe('sports endpoints', () => {
         confidenceScore: 82
       }
     }
+    const fixtureFiltersCalls = []
+    const listTodayFixtures = async (filters) => {
+      fixtureFiltersCalls.push(filters)
+
+      return [fixture]
+    }
 
     const app = createApp({
       env: createTestEnv({
@@ -112,7 +118,7 @@ describe('sports endpoints', () => {
           }
         }
       }),
-      listTodayFixtures: async () => [fixture],
+      listTodayFixtures,
       getFixtureById: async (id) => {
         if (String(id) === '1') {
           return fixture
@@ -128,6 +134,19 @@ describe('sports endpoints', () => {
     expect(listResponse.body.data[0].prediction.id).toBe(17)
     expect(listResponse.body.data[0].homeTeam.providerId).toBeUndefined()
     expect(listResponse.body.data[0].competition.providerId).toBeUndefined()
+    expect(fixtureFiltersCalls[0]).toEqual({
+      competition: undefined,
+      team: undefined
+    })
+
+    const filteredResponse = await request(app).get(
+      '/api/fixtures/today?competition=laliga&team=10'
+    )
+    expect(filteredResponse.status).toBe(200)
+    expect(fixtureFiltersCalls.at(-1)).toEqual({
+      competition: 'laliga',
+      team: '10'
+    })
 
     const detailResponse = await request(app).get('/api/fixtures/1')
     expect(detailResponse.status).toBe(200)

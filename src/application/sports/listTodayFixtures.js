@@ -6,6 +6,16 @@ export function createListTodayFixturesUseCase({
   lookaheadHours,
   maxFixtures
 }) {
+  function normalizeFilters(filters = {}) {
+    return {
+      competition:
+        typeof filters.competition === 'string'
+          ? filters.competition.trim()
+          : '',
+      team: typeof filters.team === 'string' ? filters.team.trim() : ''
+    }
+  }
+
   function buildPredictionMap(predictions) {
     const predictionsByFixtureId = new Map()
 
@@ -18,11 +28,30 @@ export function createListTodayFixturesUseCase({
     return predictionsByFixtureId
   }
 
-  return async function listTodayFixtures() {
+  function matchesFilters(fixture, filters) {
+    if (
+      filters.competition &&
+      fixture.competition?.targetKey !== filters.competition
+    ) {
+      return false
+    }
+
+    if (!filters.team) {
+      return true
+    }
+
+    return (
+      String(fixture.homeTeam?.id) === filters.team ||
+      String(fixture.awayTeam?.id) === filters.team
+    )
+  }
+
+  return async function listTodayFixtures(filters = {}) {
     const startsAt = now()
     const endsAt = new Date(
       startsAt.getTime() + lookaheadHours * 60 * 60 * 1000
     )
+    const normalizedFilters = normalizeFilters(filters)
 
     const [fixtures, predictions] = await Promise.all([
       fixtureRepository.listFixturesByWindow({
@@ -38,11 +67,13 @@ export function createListTodayFixturesUseCase({
     ])
     const predictionsByFixtureId = buildPredictionMap(predictions)
 
-    return fixtures.map((fixture) =>
-      fixturePublicViewService.toPublicFixture(
-        fixture,
-        predictionsByFixtureId.get(fixture.id)
+    return fixtures
+      .filter((fixture) => matchesFilters(fixture, normalizedFilters))
+      .map((fixture) =>
+        fixturePublicViewService.toPublicFixture(
+          fixture,
+          predictionsByFixtureId.get(fixture.id)
+        )
       )
-    )
   }
 }
