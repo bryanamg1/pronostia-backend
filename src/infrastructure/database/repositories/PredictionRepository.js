@@ -151,6 +151,27 @@ export function createPredictionRepository({ poolManager }) {
       return mapPredictionRow(rows[0])
     },
 
+    async updatePredictionExplanation({ id, explanation }) {
+      const pool = poolManager.getPool()
+
+      await pool.query(
+        `
+          UPDATE predictions
+          SET explanation_json = ?,
+              updated_at = NOW()
+          WHERE id = ?
+        `,
+        [explanation ? JSON.stringify(explanation) : null, id]
+      )
+
+      const [rows] = await pool.query(
+        `${PREDICTION_SELECT} WHERE p.id = ? LIMIT 1`,
+        [id]
+      )
+
+      return mapPredictionRow(rows[0])
+    },
+
     async listPredictionsByWindow({ from, to, limit = 250 }) {
       const pool = poolManager.getPool()
       const [rows] = await pool.query(

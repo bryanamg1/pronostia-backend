@@ -82,6 +82,7 @@ describe('database foundation', () => {
     expect(result.pending).toContain('20260728_008_create_model_evaluations')
     expect(result.pending).toContain('20260729_009_create_odds')
     expect(result.pending).toContain('20260729_012_create_manual_odds_audit')
+    expect(result.pending).toContain('20260729_013_create_openai_usage_records')
     expect(writes).not.toHaveLength(0)
   })
 
@@ -191,6 +192,10 @@ describe('database foundation', () => {
           return [[], []]
         }
 
+        if (sql.includes('CREATE TABLE IF NOT EXISTS openai_usage_records')) {
+          return [[], []]
+        }
+
         throw new Error(`Unexpected SQL: ${sql}`)
       }
     }
@@ -285,6 +290,11 @@ describe('database foundation', () => {
     expect(
       executedStatements.filter((statement) =>
         statement.includes('CREATE TABLE IF NOT EXISTS manual_odds_audit')
+      )
+    ).toHaveLength(1)
+    expect(
+      executedStatements.filter((statement) =>
+        statement.includes('CREATE TABLE IF NOT EXISTS openai_usage_records')
       )
     ).toHaveLength(1)
     expect(writes.length).toBeGreaterThan(0)

@@ -134,4 +134,47 @@ describe('environment bootstrap', () => {
 
     expect(env.database.configured).toBe(false)
   })
+
+  test('invalid OpenAI thresholds are rejected', () => {
+    expect(() =>
+      loadEnv({
+        shouldLoadDotenv: false,
+        env: {
+          NODE_ENV: 'development',
+          PORT: '3000',
+          FRONTEND_URL: 'http://localhost:5173',
+          LOG_LEVEL: 'info',
+          TIMEZONE: 'America/Argentina/Buenos_Aires',
+          SCHEDULER_ENABLED: 'false',
+          SCHEDULER_CRON: '0 6 * * *',
+          RATE_LIMIT_WINDOW_MS: '1000',
+          RATE_LIMIT_MAX_REQUESTS: '100',
+          OPENAI_MONTHLY_ALERT_PERCENT: '90',
+          OPENAI_MONTHLY_DEGRADED_PERCENT: '85'
+        }
+      })
+    ).toThrow('OPENAI_MONTHLY_DEGRADED_PERCENT')
+  })
+
+  test('hard limit must not be below degraded threshold', () => {
+    expect(() =>
+      loadEnv({
+        shouldLoadDotenv: false,
+        env: {
+          NODE_ENV: 'development',
+          PORT: '3000',
+          FRONTEND_URL: 'http://localhost:5173',
+          LOG_LEVEL: 'info',
+          TIMEZONE: 'America/Argentina/Buenos_Aires',
+          SCHEDULER_ENABLED: 'false',
+          SCHEDULER_CRON: '0 6 * * *',
+          RATE_LIMIT_WINDOW_MS: '1000',
+          RATE_LIMIT_MAX_REQUESTS: '100',
+          OPENAI_MONTHLY_ALERT_PERCENT: '70',
+          OPENAI_MONTHLY_DEGRADED_PERCENT: '85',
+          OPENAI_HARD_LIMIT_PERCENT: '80'
+        }
+      })
+    ).toThrow('OPENAI_HARD_LIMIT_PERCENT')
+  })
 })

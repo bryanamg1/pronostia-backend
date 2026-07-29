@@ -4,6 +4,8 @@ import { createGetHealthStatusUseCase } from '../application/system/getHealthSta
 import { createGetReadinessStatusUseCase } from '../application/system/getReadinessStatus.js'
 import { createGenerateScoredPredictionsUseCase } from '../application/prediction/generateScoredPredictions.js'
 import { createGetPredictionByIdUseCase } from '../application/prediction/getPredictionById.js'
+import { createExplainPredictionUseCase } from '../application/prediction/explainPrediction.js'
+import { createExplainTodayPredictionsUseCase } from '../application/prediction/explainTodayPredictions.js'
 import { createListTodayPredictionsUseCase } from '../application/prediction/listTodayPredictions.js'
 import { createListTopPredictionsUseCase } from '../application/prediction/listTopPredictions.js'
 import { createRecordManualOddsUseCase } from '../application/prediction/recordManualOdds.js'
@@ -24,6 +26,7 @@ import { createHistoricalPredictionRepository } from '../infrastructure/database
 import { createManualOddsAuditRepository } from '../infrastructure/database/repositories/ManualOddsAuditRepository.js'
 import { createModelEvaluationRepository } from '../infrastructure/database/repositories/ModelEvaluationRepository.js'
 import { createModelVersionRepository } from '../infrastructure/database/repositories/ModelVersionRepository.js'
+import { createOpenAiUsageRepository } from '../infrastructure/database/repositories/OpenAiUsageRepository.js'
 import { createOddsRepository } from '../infrastructure/database/repositories/OddsRepository.js'
 import { createPredictionRepository } from '../infrastructure/database/repositories/PredictionRepository.js'
 import { createSystemRunRepository } from '../infrastructure/database/repositories/SystemRunRepository.js'
@@ -31,6 +34,7 @@ import { createSportsSyncStateRepository } from '../infrastructure/database/repo
 import { createTeamRepository } from '../infrastructure/database/repositories/TeamRepository.js'
 import { createMySqlPoolManager } from '../infrastructure/database/mysql/createMySqlPoolManager.js'
 import { createLogger } from '../infrastructure/logging/createLogger.js'
+import { createOpenAiResponsesClient } from '../infrastructure/openai/createOpenAiResponsesClient.js'
 import { createScheduler } from '../infrastructure/scheduler/createScheduler.js'
 import { createApiFootballClient } from '../infrastructure/sports/apiFootball/createApiFootballClient.js'
 
@@ -59,6 +63,7 @@ export function createDependencies({ env, loggerOverride } = {}) {
     poolManager
   })
   const predictionRepository = createPredictionRepository({ poolManager })
+  const openAiUsageRepository = createOpenAiUsageRepository({ poolManager })
   const modelEvaluationRepository = createModelEvaluationRepository({
     poolManager
   })
@@ -69,6 +74,15 @@ export function createDependencies({ env, loggerOverride } = {}) {
         minIntervalMs: env.sports.minIntervalMs,
         retryAfterFallbackMs: env.sports.retryAfterFallbackMs,
         softLimitPercent: env.sports.softLimitPercent,
+        logger: loggerHandle.logger
+      })
+    : null
+  const openAiClient = env.openai.configured
+    ? createOpenAiResponsesClient({
+        baseUrl: env.openai.baseUrl,
+        apiKey: env.openai.apiKey,
+        model: env.openai.model,
+        timeoutMs: env.openai.timeoutMs,
         logger: loggerHandle.logger
       })
     : null
@@ -161,6 +175,19 @@ export function createDependencies({ env, loggerOverride } = {}) {
   const getPredictionById = createGetPredictionByIdUseCase({
     predictionRepository
   })
+  const explainPrediction = createExplainPredictionUseCase({
+    predictionRepository,
+    generateHistoricalPrediction,
+    openAiUsageRepository,
+    openAiClient,
+    openAiConfig: env.openai,
+    logger: loggerHandle.logger
+  })
+  const explainTodayPredictions = createExplainTodayPredictionsUseCase({
+    listTodayPredictions,
+    explainPrediction,
+    maxBatchSize: env.sports.sync.maxFixtures
+  })
 
   const scheduler = createScheduler({
     enabled: env.scheduler.enabled,
@@ -191,7 +218,9 @@ export function createDependencies({ env, loggerOverride } = {}) {
       generateScoredPredictions,
       listTodayPredictions,
       listTopPredictions,
-      getPredictionById
+      getPredictionById,
+      explainPrediction,
+      explainTodayPredictions
     }
   }
 }
