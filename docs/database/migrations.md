@@ -46,6 +46,7 @@ Si la configuracion de MySQL no esta completa o las credenciales no son validas,
 - `analysis_runs`
 - `predictions`
 - `manual_odds_audit`
+- `openai_usage_records`
 
 ## Alcance actual
 
@@ -59,8 +60,9 @@ Si la configuracion de MySQL no esta completa o las credenciales no son validas,
 - `model_evaluations` registra metricas agregadas de backtesting cronologico por competicion y temporada.
 - `odds` persiste snapshots de cuotas por fixture, bookmaker, mercado, seleccion y origen (`API` o `MANUAL`).
 - `analysis_runs` reserva el estado agregable de futuras corridas diarias de analisis.
-- `predictions` persiste scoring prepartido con `edge_pp`, `confidence_score`, `risk_level` y `recommendation`.
+- `predictions` persiste scoring prepartido con `edge_pp`, `confidence_score`, `risk_level`, `recommendation` y el JSON de explicacion estructurada cuando existe.
 - `manual_odds_audit` registra cambios manuales de cuotas sin exponer secretos.
+- `openai_usage_records` registra uso mensual de OpenAI por prediccion, tokens, costo estimado, estado del intento, metadatos sanitizados e historial de degradaciones controladas a fallback.
 
 ## Revertir
 
