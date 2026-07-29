@@ -5,6 +5,8 @@ const SENSITIVE_KEYS = new Set([
   'cookie',
   'set-cookie',
   'x-api-key',
+  'x-apisports-key',
+  'x-rapidapi-key',
   'api-key',
   'apikey',
   'password',

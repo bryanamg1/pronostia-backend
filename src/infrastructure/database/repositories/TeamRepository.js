@@ -1,5 +1,26 @@
 export function createTeamRepository({ poolManager }) {
   return {
+    async findByProviderId(providerId) {
+      const pool = poolManager.getPool()
+      const [rows] = await pool.query(
+        'SELECT * FROM teams WHERE provider_id = ? LIMIT 1',
+        [providerId]
+      )
+
+      const row = rows[0]
+
+      if (!row) {
+        return null
+      }
+
+      return {
+        id: Number(row.id),
+        providerId: Number(row.provider_id),
+        name: row.name,
+        logoUrl: row.logo_url
+      }
+    },
+
     async upsertTeam(team) {
       const pool = poolManager.getPool()
       const [result] = await pool.query(
