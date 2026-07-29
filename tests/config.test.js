@@ -42,5 +42,7 @@ describe('configuration', () => {
     })
 
     expect(env.database.configured).toBe(false)
+    expect(env.openai.configured).toBe(false)
+    expect(env.openai.model).toBe('gpt-5-mini')
   })
 })

@@ -146,6 +146,13 @@ describe('phase 4 prediction use cases', () => {
     expect(result.status).toBe('ok')
     expect(result.predictions).toHaveLength(3)
     expect(
+      result.predictions.some(
+        (prediction) =>
+          prediction.recommendation === 'CONSIDER' &&
+          prediction.explanation?.status === 'EXPLANATION_PENDING'
+      )
+    ).toBe(true)
+    expect(
       result.predictions.filter((prediction) => prediction.isDailyTop)
     ).toHaveLength(1)
     expect(
