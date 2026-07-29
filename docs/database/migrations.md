@@ -42,6 +42,10 @@ Si la configuracion de MySQL no esta completa o las credenciales no son validas,
 - `model_versions`
 - `historical_predictions`
 - `model_evaluations`
+- `odds`
+- `analysis_runs`
+- `predictions`
+- `manual_odds_audit`
 
 ## Alcance actual
 
@@ -53,6 +57,10 @@ Si la configuracion de MySQL no esta completa o las credenciales no son validas,
 - `model_versions` versiona parametros reproducibles del motor estadistico.
 - `historical_predictions` persiste predicciones historicas auditables con su cutoff temporal.
 - `model_evaluations` registra metricas agregadas de backtesting cronologico por competicion y temporada.
+- `odds` persiste snapshots de cuotas por fixture, bookmaker, mercado, seleccion y origen (`API` o `MANUAL`).
+- `analysis_runs` reserva el estado agregable de futuras corridas diarias de analisis.
+- `predictions` persiste scoring prepartido con `edge_pp`, `confidence_score`, `risk_level` y `recommendation`.
+- `manual_odds_audit` registra cambios manuales de cuotas sin exponer secretos.
 
 ## Revertir
 
