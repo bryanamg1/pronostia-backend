@@ -12,10 +12,12 @@ import { notFoundHandler } from './http/middlewares/notFoundHandler.js'
 import { createRateLimitMiddleware } from './http/middlewares/rateLimit.js'
 import { createRequestIdMiddleware } from './http/middlewares/requestIdMiddleware.js'
 import { createRequireAdminAccess } from './http/middlewares/requireAdminAccess.js'
+import { createSystemController } from './http/controllers/systemController.js'
 import { createCompetitionsRoutes } from './http/routes/competitionsRoutes.js'
 import { createFixturesRoutes } from './http/routes/fixturesRoutes.js'
 import { createHealthRoutes } from './http/routes/healthRoutes.js'
 import { createPredictionsRoutes } from './http/routes/predictionsRoutes.js'
+import { createSystemRoutes } from './http/routes/systemRoutes.js'
 import { createTestRoutes } from './http/routes/testRoutes.js'
 import { DEFAULT_JSON_LIMIT } from '../shared/constants/http.js'
 
@@ -24,6 +26,7 @@ export function createApp({
   logger,
   getHealthStatus,
   getReadinessStatus,
+  getLatestSystemRun,
   listCompetitions,
   listTodayFixtures,
   getFixtureById,
@@ -62,6 +65,14 @@ export function createApp({
   })
 
   app.use('/api', createHealthRoutes({ healthController }))
+
+  if (getLatestSystemRun) {
+    const systemController = createSystemController({
+      getLatestSystemRun
+    })
+
+    app.use('/api', createSystemRoutes({ systemController }))
+  }
 
   if (listCompetitions) {
     const competitionsController = createCompetitionsController({

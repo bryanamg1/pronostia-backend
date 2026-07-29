@@ -10,12 +10,64 @@ describe('prediction endpoints', () => {
     const { logger } = createTestLogger()
     const prediction = {
       id: 1,
-      fixtureId: 10,
-      market: 'MATCH_RESULT',
-      selection: 'HOME',
-      recommendation: 'CONSIDER',
-      confidenceScore: 76,
-      edgePp: 6.2
+      fixture: {
+        id: 10,
+        kickoffAt: '2026-07-29T21:00:00.000Z',
+        status: 'NS',
+        competition: {
+          id: 3,
+          targetKey: 'uefa-champions-league',
+          name: 'UEFA Champions League',
+          country: 'Europe',
+          season: 2026
+        },
+        homeTeam: {
+          id: 10,
+          name: 'FK Crvena Zvezda'
+        },
+        awayTeam: {
+          id: 11,
+          name: 'Larne'
+        }
+      },
+      model: {
+        version: 'historical-first-v1'
+      },
+      selection: {
+        market: 'MATCH_RESULT',
+        value: 'HOME',
+        recommendation: 'CONSIDER',
+        confidenceScore: 76,
+        edgePp: 6.2,
+        modelProbability: 0.55,
+        marketProbability: 0.49,
+        riskLevel: 'LOW'
+      },
+      analysis: {
+        expectedGoals: {
+          home: 1.84,
+          away: 0.91
+        },
+        probabilities: {
+          homeWin: 0.55,
+          draw: 0.22,
+          awayWin: 0.23
+        },
+        dataQuality: {
+          status: 'SUFFICIENT',
+          flags: []
+        }
+      },
+      explanation: {
+        status: 'EXPLANATION_READY',
+        source: 'OPENAI',
+        generatedAt: '2026-07-29T15:00:00.000Z',
+        summary: 'Explicacion resumida',
+        supportingFactors: ['Factor 1'],
+        counterFactors: ['Factor 2'],
+        warnings: ['Uso responsable'],
+        responsibleUseNotice: 'Uso responsable'
+      }
     }
 
     return {
@@ -45,10 +97,17 @@ describe('prediction endpoints', () => {
             }
           }
         }),
-        listTodayPredictions: async () => [prediction],
+        getLatestSystemRun: async () => null,
+        listTodayPredictions: async ({ filters } = {}) => {
+          if (filters?.competition === 'serie-a') {
+            return []
+          }
+
+          return [prediction]
+        },
         listTopPredictions: async () => [prediction],
         getPredictionById: async (id) => {
-          if (String(id) === '1') {
+          if (Number(id) === 1) {
             return prediction
           }
 
@@ -92,7 +151,12 @@ describe('prediction endpoints', () => {
 
     const detailResponse = await request(app).get('/api/predictions/1')
     expect(detailResponse.status).toBe(200)
-    expect(detailResponse.body.data.selection).toBe('HOME')
+    expect(detailResponse.body.data.selection.value).toBe('HOME')
+    expect(detailResponse.body.data.analysis.expectedGoals.home).toBe(1.84)
+    expect(detailResponse.body.data.explanation.summary).toBe(
+      'Explicacion resumida'
+    )
+    expect(detailResponse.body.data.explanation.metadata).toBeUndefined()
 
     const missingResponse = await request(app).get('/api/predictions/999')
     expect(missingResponse.status).toBe(404)
@@ -126,6 +190,26 @@ describe('prediction endpoints', () => {
 
     expect(dailyExplanationsResponse.status).toBe(200)
     expect(dailyExplanationsResponse.body.data.readyCount).toBe(1)
+  })
+
+  test('today predictions route forwards supported public filters', async () => {
+    const { app } = createPredictionApp()
+
+    const response = await request(app).get(
+      '/api/predictions/today?competition=serie-a'
+    )
+
+    expect(response.status).toBe(200)
+    expect(response.body.data).toEqual([])
+  })
+
+  test('prediction detail validates a positive integer id', async () => {
+    const { app } = createPredictionApp()
+
+    const response = await request(app).get('/api/predictions/not-a-number')
+
+    expect(response.status).toBe(400)
+    expect(response.body.error.code).toBe('VALIDATION_ERROR')
   })
 
   test('admin explanation routes require authentication', async () => {

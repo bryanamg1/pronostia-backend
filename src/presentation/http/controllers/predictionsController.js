@@ -20,7 +20,15 @@ export function createPredictionsController({
 }) {
   return {
     async getTodayPredictions(request, response) {
-      const predictions = await listTodayPredictions()
+      const predictions = await listTodayPredictions({
+        filters: {
+          competition: request.query.competition,
+          market: request.query.market,
+          recommendation: request.query.recommendation,
+          dataQuality: request.query.dataQuality,
+          explanationSource: request.query.explanationSource
+        }
+      })
 
       response.status(200).json({
         success: true,
@@ -44,7 +52,11 @@ export function createPredictionsController({
     },
 
     async getPredictionById(request, response) {
-      const prediction = await getPredictionById(request.params.id)
+      const predictionId = parsePositiveInteger(
+        request.params.id,
+        'predictionId'
+      )
+      const prediction = await getPredictionById(predictionId)
 
       response.status(200).json({
         success: true,

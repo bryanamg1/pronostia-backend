@@ -2,13 +2,17 @@ import { randomUUID } from 'node:crypto'
 
 import { createGetHealthStatusUseCase } from '../application/system/getHealthStatus.js'
 import { createGetReadinessStatusUseCase } from '../application/system/getReadinessStatus.js'
+import { createGetLatestSystemRunUseCase } from '../application/system/getLatestSystemRun.js'
 import { createGenerateScoredPredictionsUseCase } from '../application/prediction/generateScoredPredictions.js'
-import { createGetPredictionByIdUseCase } from '../application/prediction/getPredictionById.js'
+import { createGetPublicPredictionByIdUseCase } from '../application/prediction/getPublicPredictionById.js'
 import { createExplainPredictionUseCase } from '../application/prediction/explainPrediction.js'
 import { createExplainTodayPredictionsUseCase } from '../application/prediction/explainTodayPredictions.js'
+import { createListPublicTodayPredictionsUseCase } from '../application/prediction/listPublicTodayPredictions.js'
+import { createListPublicTopPredictionsUseCase } from '../application/prediction/listPublicTopPredictions.js'
 import { createListTodayPredictionsUseCase } from '../application/prediction/listTodayPredictions.js'
 import { createListTopPredictionsUseCase } from '../application/prediction/listTopPredictions.js'
 import { createRecordManualOddsUseCase } from '../application/prediction/recordManualOdds.js'
+import { createPredictionPublicViewService } from '../application/prediction/services/predictionPublicView.js'
 import { createEvaluateHistoricalModelUseCase } from '../application/prediction/useCases/evaluateHistoricalModel.js'
 import { createGenerateHistoricalPredictionUseCase } from '../application/prediction/useCases/generateHistoricalPrediction.js'
 import { createImportHistoricalSeasonUseCase } from '../application/sports/importHistoricalSeason.js'
@@ -94,6 +98,9 @@ export function createDependencies({ env, loggerOverride } = {}) {
     environment: env.nodeEnv,
     readinessProbe
   })
+  const getLatestSystemRun = createGetLatestSystemRunUseCase({
+    systemRunRepository
+  })
   const runScheduledSystemCheck = createRunScheduledSystemCheckUseCase({
     logger: loggerHandle.logger,
     systemRunRepository,
@@ -165,15 +172,28 @@ export function createDependencies({ env, loggerOverride } = {}) {
     predictionRepository,
     lookaheadHours: env.sports.sync.lookaheadHours
   })
-  const listTodayPredictions = createListTodayPredictionsUseCase({
+  const listStoredTodayPredictions = createListTodayPredictionsUseCase({
     predictionRepository,
     lookaheadHours: env.sports.sync.lookaheadHours
   })
-  const listTopPredictions = createListTopPredictionsUseCase({
-    listTodayPredictions
+  const listStoredTopPredictions = createListTopPredictionsUseCase({
+    listTodayPredictions: listStoredTodayPredictions
   })
-  const getPredictionById = createGetPredictionByIdUseCase({
-    predictionRepository
+  const predictionPublicViewService = createPredictionPublicViewService({
+    fixtureRepository,
+    modelConfig: predictionModelConfig
+  })
+  const listTodayPredictions = createListPublicTodayPredictionsUseCase({
+    listStoredTodayPredictions,
+    predictionPublicViewService
+  })
+  const listTopPredictions = createListPublicTopPredictionsUseCase({
+    listStoredTopPredictions,
+    predictionPublicViewService
+  })
+  const getPredictionById = createGetPublicPredictionByIdUseCase({
+    predictionRepository,
+    predictionPublicViewService
   })
   const explainPrediction = createExplainPredictionUseCase({
     predictionRepository,
@@ -184,7 +204,7 @@ export function createDependencies({ env, loggerOverride } = {}) {
     logger: loggerHandle.logger
   })
   const explainTodayPredictions = createExplainTodayPredictionsUseCase({
-    listTodayPredictions,
+    listTodayPredictions: listStoredTodayPredictions,
     explainPrediction,
     maxBatchSize: env.sports.sync.maxFixtures
   })
@@ -205,6 +225,7 @@ export function createDependencies({ env, loggerOverride } = {}) {
     useCases: {
       getHealthStatus,
       getReadinessStatus,
+      getLatestSystemRun,
       runScheduledSystemCheck,
       syncSportsData,
       runScheduledSportsSync,
