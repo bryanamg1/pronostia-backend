@@ -28,7 +28,7 @@ Comportamiento actual:
 
 - lee solo desde MySQL;
 - no consulta el proveedor en tiempo de request;
-- devuelve scoring persistido con `modelProbability`, `marketProbability`, `edgePp`, `confidenceScore`, `riskLevel` y `recommendation`.
+- devuelve scoring persistido con `modelProbability`, `marketProbability`, `edgePp`, `confidenceScore`, `riskLevel`, `recommendation` y `explanation`.
 
 ## GET /api/predictions/top
 
@@ -62,3 +62,28 @@ Restricciones actuales:
 - solo acepta combinaciones de mercado/seleccion soportadas por el scoring;
 - persiste auditoria de cambios manuales;
 - no expone credenciales ni consulta el proveedor en el request.
+
+## POST /api/admin/predictions/:id/explanation
+
+Genera o regenera la explicacion estructurada de una prediccion ya persistida.
+
+Comportamiento actual:
+
+- solo opera sobre predicciones `CONSIDER`;
+- reutiliza probabilidades y scoring ya calculados;
+- nunca recalcula `modelProbability`, `edgePp` ni `recommendation`;
+- usa OpenAI solo si esta configurado y el presupuesto mensual lo permite;
+- cae a fallback determinista si OpenAI falla, no esta configurado o el presupuesto esta bloqueado.
+
+Los detalles operativos de autenticacion temporal, payload y errores se documentan en [admin-prediction-explanations.md](./admin-prediction-explanations.md).
+
+## POST /api/admin/predictions/explanations/today
+
+Procesa las predicciones `CONSIDER` de la ventana activa y genera explicaciones de forma secuencial.
+
+Reglas actuales:
+
+- presupuesto mensual base: `USD 20`;
+- alerta operativa al `70 %`;
+- modo degradado al `85 %`: OpenAI se reserva para el Top 5 diario y el resto usa plantilla determinista;
+- bloqueo al `100 %`: no se realizan nuevas llamadas a OpenAI hasta el siguiente periodo.

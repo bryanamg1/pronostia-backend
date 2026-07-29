@@ -17,7 +17,9 @@ export async function startServer(options = {}) {
     listTodayPredictions: runtime.useCases.listTodayPredictions,
     listTopPredictions: runtime.useCases.listTopPredictions,
     getPredictionById: runtime.useCases.getPredictionById,
-    recordManualOdds: runtime.useCases.recordManualOdds
+    recordManualOdds: runtime.useCases.recordManualOdds,
+    explainPrediction: runtime.useCases.explainPrediction,
+    explainTodayPredictions: runtime.useCases.explainTodayPredictions
   })
 
   const server = await new Promise((resolve) => {

@@ -19,6 +19,18 @@ import {
   DEFAULT_SPORTS_SYNC_LOOKAHEAD_HOURS,
   DEFAULT_SPORTS_SYNC_MAX_FIXTURES
 } from '../shared/constants/sports.js'
+import {
+  DEFAULT_OPENAI_ALERT_PERCENT,
+  DEFAULT_OPENAI_BASE_URL,
+  DEFAULT_OPENAI_CACHED_INPUT_COST_USD_PER_1M_TOKENS,
+  DEFAULT_OPENAI_DEGRADED_PERCENT,
+  DEFAULT_OPENAI_HARD_LIMIT_PERCENT,
+  DEFAULT_OPENAI_INPUT_COST_USD_PER_1M_TOKENS,
+  DEFAULT_OPENAI_MODEL,
+  DEFAULT_OPENAI_MONTHLY_BUDGET_USD,
+  DEFAULT_OPENAI_OUTPUT_COST_USD_PER_1M_TOKENS,
+  DEFAULT_OPENAI_TIMEOUT_MS
+} from '../shared/constants/openai.js'
 
 export function bootstrapEnv({
   env = process.env,
@@ -82,12 +94,64 @@ export function loadEnv({ env = process.env, shouldLoadDotenv = true } = {}) {
       runtimeEnv.SPORTS_SYNC_MAX_FIXTURES ?? DEFAULT_SPORTS_SYNC_MAX_FIXTURES,
     SPORTS_SYNC_HISTORY_MAX_PAGES_PER_RUN:
       runtimeEnv.SPORTS_SYNC_HISTORY_MAX_PAGES_PER_RUN ??
-      DEFAULT_SPORTS_SYNC_HISTORY_MAX_PAGES_PER_RUN
+      DEFAULT_SPORTS_SYNC_HISTORY_MAX_PAGES_PER_RUN,
+    OPENAI_API_KEY: runtimeEnv.OPENAI_API_KEY ?? '',
+    OPENAI_ENABLED: runtimeEnv.OPENAI_ENABLED ?? false,
+    OPENAI_BASE_URL: runtimeEnv.OPENAI_BASE_URL ?? DEFAULT_OPENAI_BASE_URL,
+    OPENAI_MODEL: runtimeEnv.OPENAI_MODEL ?? DEFAULT_OPENAI_MODEL,
+    OPENAI_MONTHLY_BUDGET_USD:
+      runtimeEnv.OPENAI_MONTHLY_BUDGET_USD ?? DEFAULT_OPENAI_MONTHLY_BUDGET_USD,
+    OPENAI_MONTHLY_ALERT_PERCENT:
+      runtimeEnv.OPENAI_MONTHLY_ALERT_PERCENT ?? DEFAULT_OPENAI_ALERT_PERCENT,
+    OPENAI_MONTHLY_DEGRADED_PERCENT:
+      runtimeEnv.OPENAI_MONTHLY_DEGRADED_PERCENT ??
+      DEFAULT_OPENAI_DEGRADED_PERCENT,
+    OPENAI_HARD_LIMIT_PERCENT:
+      runtimeEnv.OPENAI_HARD_LIMIT_PERCENT ?? DEFAULT_OPENAI_HARD_LIMIT_PERCENT,
+    OPENAI_TIMEOUT_MS:
+      runtimeEnv.OPENAI_TIMEOUT_MS ?? DEFAULT_OPENAI_TIMEOUT_MS,
+    OPENAI_INPUT_COST_USD_PER_1M_TOKENS:
+      runtimeEnv.OPENAI_INPUT_COST_USD_PER_1M_TOKENS ??
+      DEFAULT_OPENAI_INPUT_COST_USD_PER_1M_TOKENS,
+    OPENAI_CACHED_INPUT_COST_USD_PER_1M_TOKENS:
+      runtimeEnv.OPENAI_CACHED_INPUT_COST_USD_PER_1M_TOKENS ??
+      DEFAULT_OPENAI_CACHED_INPUT_COST_USD_PER_1M_TOKENS,
+    OPENAI_OUTPUT_COST_USD_PER_1M_TOKENS:
+      runtimeEnv.OPENAI_OUTPUT_COST_USD_PER_1M_TOKENS ??
+      DEFAULT_OPENAI_OUTPUT_COST_USD_PER_1M_TOKENS,
+    ADMIN_API_TOKEN: runtimeEnv.ADMIN_API_TOKEN ?? '',
+    ADMIN_RATE_LIMIT_WINDOW_MS: runtimeEnv.ADMIN_RATE_LIMIT_WINDOW_MS ?? 60000,
+    ADMIN_RATE_LIMIT_MAX_REQUESTS:
+      runtimeEnv.ADMIN_RATE_LIMIT_MAX_REQUESTS ?? 20
   })
 
   if (!parsed.success) {
     throw new ValidationError(
       `Invalid environment configuration: ${formatEnvError(parsed.error)}`
+    )
+  }
+
+  if (
+    parsed.data.OPENAI_MONTHLY_DEGRADED_PERCENT <
+    parsed.data.OPENAI_MONTHLY_ALERT_PERCENT
+  ) {
+    throw new ValidationError(
+      'Invalid environment configuration: OPENAI_MONTHLY_DEGRADED_PERCENT must be greater than or equal to OPENAI_MONTHLY_ALERT_PERCENT'
+    )
+  }
+
+  if (
+    parsed.data.OPENAI_HARD_LIMIT_PERCENT <
+    parsed.data.OPENAI_MONTHLY_DEGRADED_PERCENT
+  ) {
+    throw new ValidationError(
+      'Invalid environment configuration: OPENAI_HARD_LIMIT_PERCENT must be greater than or equal to OPENAI_MONTHLY_DEGRADED_PERCENT'
+    )
+  }
+
+  if (parsed.data.OPENAI_ENABLED && !parsed.data.OPENAI_MODEL) {
+    throw new ValidationError(
+      'Invalid environment configuration: OPENAI_MODEL is required when OPENAI_ENABLED=true'
     )
   }
 
@@ -135,6 +199,33 @@ export function loadEnv({ env = process.env, shouldLoadDotenv = true } = {}) {
       user: parsed.data.DB_USER,
       password: parsed.data.DB_PASSWORD,
       name: parsed.data.DB_NAME
+    },
+    admin: {
+      tokenConfigured: Boolean(parsed.data.ADMIN_API_TOKEN),
+      token: parsed.data.ADMIN_API_TOKEN,
+      rateLimitWindowMs: parsed.data.ADMIN_RATE_LIMIT_WINDOW_MS,
+      rateLimitMaxRequests: parsed.data.ADMIN_RATE_LIMIT_MAX_REQUESTS
+    },
+    openai: {
+      enabled: parsed.data.OPENAI_ENABLED,
+      configured:
+        parsed.data.OPENAI_ENABLED && Boolean(parsed.data.OPENAI_API_KEY),
+      baseUrl: parsed.data.OPENAI_BASE_URL,
+      apiKey: parsed.data.OPENAI_API_KEY,
+      model: parsed.data.OPENAI_MODEL,
+      timeoutMs: parsed.data.OPENAI_TIMEOUT_MS,
+      budget: {
+        monthlyUsd: parsed.data.OPENAI_MONTHLY_BUDGET_USD,
+        alertPercent: parsed.data.OPENAI_MONTHLY_ALERT_PERCENT,
+        degradedPercent: parsed.data.OPENAI_MONTHLY_DEGRADED_PERCENT,
+        hardLimitPercent: parsed.data.OPENAI_HARD_LIMIT_PERCENT
+      },
+      pricing: {
+        inputUsdPer1MTokens: parsed.data.OPENAI_INPUT_COST_USD_PER_1M_TOKENS,
+        cachedInputUsdPer1MTokens:
+          parsed.data.OPENAI_CACHED_INPUT_COST_USD_PER_1M_TOKENS,
+        outputUsdPer1MTokens: parsed.data.OPENAI_OUTPUT_COST_USD_PER_1M_TOKENS
+      }
     }
   }
 }

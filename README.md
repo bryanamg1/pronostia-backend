@@ -9,8 +9,9 @@ Backend de PronostIA para orquestar analisis prepartido de futbol, exponer una A
 - Fase 2 completada con cierre tecnico sobre ingesta deportiva acotada, cache historica y scheduler.
 - Fase 3 completada tecnicamente con motor estadistico determinista y evaluacion historica real sobre Premier League 2024.
 - Fase 4 completada tecnicamente con persistencia de odds, scoring determinista, endpoints de predicciones y validacion empirica controlada sobre una muestra real de API-Football.
+- Fase 5 completada tecnicamente con explicaciones opcionales OpenAI, validacion estructurada, presupuesto mensual, ledger de coste y fallback determinista sobre predicciones ya persistidas.
 - Restriccion externa conocida: la cuenta API-Football Free validada no tiene acceso a `season=2026` para las ligas trianguladas; la evidencia real disponible en esta fase fue historica.
-- OpenAI sigue deshabilitado y queda fuera del alcance actual.
+- OpenAI no recalcula probabilidades ni recomendaciones; solo puede seleccionar explicaciones estructuradas a partir de hechos ya calculados.
 
 ## Stack
 
@@ -67,6 +68,21 @@ npm run check
 - `SPORTS_SYNC_LOOKAHEAD_HOURS`
 - `SPORTS_SYNC_MAX_FIXTURES`
 - `SPORTS_SYNC_HISTORY_MAX_PAGES_PER_RUN`
+- `ADMIN_API_TOKEN`
+- `ADMIN_RATE_LIMIT_WINDOW_MS`
+- `ADMIN_RATE_LIMIT_MAX_REQUESTS`
+- `OPENAI_API_KEY`
+- `OPENAI_ENABLED`
+- `OPENAI_BASE_URL`
+- `OPENAI_MODEL`
+- `OPENAI_MONTHLY_BUDGET_USD`
+- `OPENAI_MONTHLY_ALERT_PERCENT`
+- `OPENAI_MONTHLY_DEGRADED_PERCENT`
+- `OPENAI_HARD_LIMIT_PERCENT`
+- `OPENAI_TIMEOUT_MS`
+- `OPENAI_INPUT_COST_USD_PER_1M_TOKENS`
+- `OPENAI_CACHED_INPUT_COST_USD_PER_1M_TOKENS`
+- `OPENAI_OUTPUT_COST_USD_PER_1M_TOKENS`
 
 ## Scripts
 
@@ -83,6 +99,7 @@ npm run check
 - `npm run sync:sports:history -- --competition=premier-league --season=2024`
 - `npm run model:predict -- --fixtureId=<id>`
 - `npm run model:score -- --fixtureId=<id>`
+- `npm run model:explain -- --predictionId=<id>`
 - `npm run model:evaluate -- --competition=premier-league --season=2024`
 
 ## Health endpoints
@@ -101,8 +118,11 @@ Documentacion publica: [docs/api/health-endpoints.md](./docs/api/health-endpoint
 - `GET /api/predictions/top`
 - `GET /api/predictions/:id`
 - `POST /api/admin/odds/manual`
+- `POST /api/admin/predictions/:id/explanation`
+- `POST /api/admin/predictions/explanations/today`
 
 Documentacion publica: [docs/api/sports-endpoints.md](./docs/api/sports-endpoints.md)
+Endpoints admin de explicaciones: [docs/api/admin-prediction-explanations.md](./docs/api/admin-prediction-explanations.md)
 Documentacion operativa de ingesta/cache: [docs/sports-ingestion.md](./docs/sports-ingestion.md)
 
 ## Migraciones
@@ -120,6 +140,20 @@ La salida de scoring con odds y reglas de abstencion queda documentada en:
 
 - [docs/statistical-model.md](./docs/statistical-model.md)
 - [docs/api/sports-endpoints.md](./docs/api/sports-endpoints.md)
+
+La capa explicativa de Fase 5 agrega:
+
+- explicacion estructurada persistida dentro de cada `prediction`;
+- presupuesto mensual con alerta al `70 %`, modo degradado al `85 %` y bloqueo al `100 %`;
+- fallback determinista cuando OpenAI no esta configurado, falla, devuelve una salida invalida o queda bloqueado por presupuesto;
+- validacion posterior con allowlist cerrada y descarte automatico de contenido no permitido.
+
+La fase quedo cerrada con una validacion real controlada sobre una prediccion elegible persistida, sin modificar la probabilidad estadistica ni la recomendacion original.
+
+Documentacion especifica:
+
+- [docs/openai-explanations.md](./docs/openai-explanations.md)
+- [docs/api/admin-prediction-explanations.md](./docs/api/admin-prediction-explanations.md)
 
 ## Seguridad de dependencias
 
