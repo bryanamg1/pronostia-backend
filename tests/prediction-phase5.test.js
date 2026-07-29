@@ -156,6 +156,34 @@ describe('phase 5 explanation services', () => {
     ).toContain(
       'La probabilidad propia para victoria de FK Crvena Zvezda es 61.0% y supera la implicita del mercado (48.0%).'
     )
+    expect(
+      contract.responseSchema.schema.properties.supportingFactors
+    ).not.toHaveProperty('uniqueItems')
+    expect(contract.fallbackContent.warnings[0]).toContain('Uso responsable')
+  })
+
+  test('backend validation still rejects duplicated factors without relying on JSON schema uniqueItems', () => {
+    const contract = buildPredictionExplanationContract({
+      prediction: createExplainablePrediction(),
+      modelPrediction: createModelResult().prediction
+    })
+
+    expect(() =>
+      validateGeneratedExplanation({
+        contract,
+        output: {
+          summary: contract.llmInput.summaryCandidates[0],
+          supportingFactors: [
+            contract.llmInput.supportingCandidates[0],
+            contract.llmInput.supportingCandidates[0]
+          ],
+          counterFactors: contract.llmInput.counterCandidates.slice(0, 1),
+          warnings: contract.llmInput.warningCandidates.slice(0, 1),
+          responsibleUseNotice: contract.llmInput.responsibleUseNotice
+        }
+      })
+    ).toThrow('Invalid structured explanation output')
+
     expect(contract.fallbackContent.warnings[0]).toContain('Uso responsable')
   })
 

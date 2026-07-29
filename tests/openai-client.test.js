@@ -68,7 +68,10 @@ describe('openai responses client', () => {
           status: 429,
           headers: new Map([
             ['authorization', 'Bearer secret-key'],
-            ['x-request-id', 'req_123']
+            ['x-request-id', 'req_123'],
+            ['retry-after', '30'],
+            ['openai-project', 'proj_hidden'],
+            ['openai-organization', 'org_hidden']
           ]),
           async json() {
             return {
@@ -94,5 +97,9 @@ describe('openai responses client', () => {
     ).rejects.toThrow('OpenAI responses request failed with HTTP 429')
 
     expect(JSON.stringify(entries)).not.toContain('secret-key')
+    expect(JSON.stringify(entries)).toContain('req_123')
+    expect(JSON.stringify(entries)).toContain('"retry-after":"30"')
+    expect(JSON.stringify(entries)).not.toContain('proj_hidden')
+    expect(JSON.stringify(entries)).not.toContain('org_hidden')
   })
 })

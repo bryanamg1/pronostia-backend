@@ -255,7 +255,6 @@ export function buildPredictionExplanationContract({
             type: 'array',
             minItems: 1,
             maxItems: 3,
-            uniqueItems: true,
             items: {
               type: 'string',
               enum: supportingCandidates,
@@ -268,7 +267,6 @@ export function buildPredictionExplanationContract({
             type: 'array',
             minItems: 1,
             maxItems: 3,
-            uniqueItems: true,
             items: {
               type: 'string',
               enum: counterCandidates,
@@ -281,7 +279,6 @@ export function buildPredictionExplanationContract({
             type: 'array',
             minItems: 1,
             maxItems: 3,
-            uniqueItems: true,
             items: {
               type: 'string',
               enum: warningCandidates,
