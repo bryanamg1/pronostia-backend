@@ -59,6 +59,28 @@ async function main() {
       return
     }
 
+    if (command === 'score') {
+      const fixtureId = Number(
+        readOptionalArg(
+          args,
+          ['fixtureId', 'fixtureid', 'npm_config_fixtureid'],
+          null
+        )
+      )
+
+      if (!Number.isInteger(fixtureId) || fixtureId <= 0) {
+        throw new ValidationError(
+          'model:score requires a positive integer --fixtureId'
+        )
+      }
+
+      const result = await runtime.useCases.generateScoredPredictions({
+        fixtureId
+      })
+      process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)
+      return
+    }
+
     const competitionKey = readOptionalArg(
       args,
       ['competition', 'npm_config_competition'],

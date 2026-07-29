@@ -282,6 +282,28 @@ export function createApiFootballClient({
       )
     },
 
+    async getOddsByDateRange({
+      fromDate,
+      toDate,
+      timezone,
+      leagueId,
+      page = 1
+    }) {
+      return apiGet(
+        'odds',
+        {
+          date: fromDate,
+          timezone,
+          league: leagueId,
+          page,
+          ...(toDate ? { to: toDate } : {})
+        },
+        {
+          step: `odds:${leagueId ?? 'global'}:${fromDate}:${page}`
+        }
+      )
+    },
+
     getQuotaSnapshot,
 
     toErrorPayload(error) {
