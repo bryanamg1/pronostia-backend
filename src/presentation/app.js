@@ -3,6 +3,7 @@ import express from 'express'
 import helmet from 'helmet'
 
 import { createHealthController } from './http/controllers/healthController.js'
+import { createPredictionsController } from './http/controllers/predictionsController.js'
 import { createCompetitionsController } from './http/controllers/competitionsController.js'
 import { createFixturesController } from './http/controllers/fixturesController.js'
 import { createErrorHandler } from './http/middlewares/errorHandler.js'
@@ -13,6 +14,7 @@ import { createRequestIdMiddleware } from './http/middlewares/requestIdMiddlewar
 import { createCompetitionsRoutes } from './http/routes/competitionsRoutes.js'
 import { createFixturesRoutes } from './http/routes/fixturesRoutes.js'
 import { createHealthRoutes } from './http/routes/healthRoutes.js'
+import { createPredictionsRoutes } from './http/routes/predictionsRoutes.js'
 import { createTestRoutes } from './http/routes/testRoutes.js'
 import { DEFAULT_JSON_LIMIT } from '../shared/constants/http.js'
 
@@ -24,6 +26,10 @@ export function createApp({
   listCompetitions,
   listTodayFixtures,
   getFixtureById,
+  listTodayPredictions,
+  listTopPredictions,
+  getPredictionById,
+  recordManualOdds,
   enableTestRoutes = false,
   jsonLimit = DEFAULT_JSON_LIMIT
 }) {
@@ -69,6 +75,22 @@ export function createApp({
     })
 
     app.use('/api', createFixturesRoutes({ fixturesController }))
+  }
+
+  if (
+    listTodayPredictions &&
+    listTopPredictions &&
+    getPredictionById &&
+    recordManualOdds
+  ) {
+    const predictionsController = createPredictionsController({
+      listTodayPredictions,
+      listTopPredictions,
+      getPredictionById,
+      recordManualOdds
+    })
+
+    app.use('/api', createPredictionsRoutes({ predictionsController }))
   }
 
   if (enableTestRoutes) {

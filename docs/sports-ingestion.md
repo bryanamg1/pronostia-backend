@@ -28,9 +28,22 @@ La fixture `1208021` no representa un partido futuro y nunca debe presentarse co
 - Una restriccion de plan queda diferenciada de un error tecnico.
 - El scheduler registra ejecuciones sin fixtures como `NO_FIXTURES`.
 - La importacion historica controlada de Premier League 2024 persiste la temporada completa mediante upserts cronologicos e idempotentes.
+- El feed diario validado usa consultas secuenciales `GET /fixtures?date=YYYY-MM-DD` por cada dia de la ventana activa; no depende de `next` ni de `from/to`.
 
 ## Desacople y alcance
 
 - El dominio y los casos de uso no dependen de detalles especificos de API-Football.
 - Cambiar de proveedor no debe afectar las capas `domain` ni `application`.
-- Esta fase no valida pronosticos, modelos estadisticos, probabilidades, odds ni integracion con OpenAI.
+- La Fase 2 sigue sin calcular probabilidades ni recomendaciones.
+- La Fase 4 agrega captura de odds y scoring encima del cache persistido, sin mezclar esa logica con la capa de ingesta.
+- OpenAI sigue fuera de alcance.
+
+## Evidencia empirica adicional de Fase 4
+
+Validacion controlada ejecutada el `2026-07-29`:
+
+- `GET /fixtures?date=2026-07-29&timezone=America/Argentina/Buenos_Aires` devolvio `HTTP 200` con `results=227`;
+- dentro de esa fecha se detectaron `23` fixtures autorizadas;
+- `GET /odds?fixture=1589421&page=1` devolvio `HTTP 200`, `results=1` y `13` bookmakers;
+- la muestra real utilizada para scoring fue `FK Crvena Zvezda vs Larne`;
+- el proveedor devolvio errores de parametros al usar `from/to` para ese caso y bloqueo de plan al usar `next`, por lo que el backend se corrigio para usar consultas diarias por fecha.

@@ -24,6 +24,35 @@ function buildAuthorizedCompetitionMap(competitions) {
   )
 }
 
+function listDatesInWindow({ startsAt, endsAt, timezone }) {
+  const dates = []
+  const cursor = new Date(startsAt)
+  const targetDate = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(endsAt)
+
+  while (true) {
+    const currentDate = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(cursor)
+    dates.push(currentDate)
+
+    if (currentDate === targetDate) {
+      break
+    }
+
+    cursor.setUTCDate(cursor.getUTCDate() + 1)
+  }
+
+  return [...new Set(dates)]
+}
+
 export function createSyncSportsDataUseCase({
   logger,
   sportsApiClient,
@@ -190,51 +219,57 @@ export function createSyncSportsDataUseCase({
 
     if (!stopReason) {
       try {
-        const fixturesResponse = await sportsApiClient.getFixturesByDateRange({
-          fromDate: fixtureWindow.fromDate,
-          toDate: fixtureWindow.toDate,
+        const fixtureDates = listDatesInWindow({
+          startsAt: fixtureWindow.startsAt,
+          endsAt: fixtureWindow.endsAt,
           timezone
         })
-        const fixturePayloads = Array.isArray(fixturesResponse.data?.response)
-          ? fixturesResponse.data.response
-          : []
 
-        for (const payload of fixturePayloads) {
-          const providerCompetitionId = Number(payload?.league?.id)
-          const authorizedCompetition = authorizedCompetitionsByProviderId.get(
-            providerCompetitionId
-          )
-          const storedCompetition = storedCompetitionsByProviderId.get(
-            providerCompetitionId
-          )
-
-          if (!authorizedCompetition || !storedCompetition) {
-            continue
-          }
-
-          const normalized = normalizeProviderFixture({
-            payload,
-            competitionId: storedCompetition.id
+        for (const date of fixtureDates) {
+          const fixturesResponse = await sportsApiClient.getFixturesByDate({
+            date,
+            timezone
           })
-          const kickoffAt = new Date(normalized.kickoffAt)
+          const fixturePayloads = Array.isArray(fixturesResponse.data?.response)
+            ? fixturesResponse.data.response
+            : []
 
-          if (
-            kickoffAt < fixtureWindow.startsAt ||
-            kickoffAt > fixtureWindow.endsAt
-          ) {
-            continue
+          for (const payload of fixturePayloads) {
+            const providerCompetitionId = Number(payload?.league?.id)
+            const authorizedCompetition =
+              authorizedCompetitionsByProviderId.get(providerCompetitionId)
+            const storedCompetition = storedCompetitionsByProviderId.get(
+              providerCompetitionId
+            )
+
+            if (!authorizedCompetition || !storedCompetition) {
+              continue
+            }
+
+            const normalized = normalizeProviderFixture({
+              payload,
+              competitionId: storedCompetition.id
+            })
+            const kickoffAt = new Date(normalized.kickoffAt)
+
+            if (
+              kickoffAt < fixtureWindow.startsAt ||
+              kickoffAt > fixtureWindow.endsAt
+            ) {
+              continue
+            }
+
+            totalDailyCandidates += 1
+            uniqueTeams.set(normalized.homeTeam.providerId, normalized.homeTeam)
+            uniqueTeams.set(normalized.awayTeam.providerId, normalized.awayTeam)
+
+            if (selectedDailyFixtures.has(normalized.providerId)) {
+              duplicatesDiscarded += 1
+              continue
+            }
+
+            selectedDailyFixtures.set(normalized.providerId, normalized)
           }
-
-          totalDailyCandidates += 1
-          uniqueTeams.set(normalized.homeTeam.providerId, normalized.homeTeam)
-          uniqueTeams.set(normalized.awayTeam.providerId, normalized.awayTeam)
-
-          if (selectedDailyFixtures.has(normalized.providerId)) {
-            duplicatesDiscarded += 1
-            continue
-          }
-
-          selectedDailyFixtures.set(normalized.providerId, normalized)
         }
       } catch (error) {
         const errorPayload = toErrorLogPayload(error)

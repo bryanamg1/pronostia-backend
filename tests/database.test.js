@@ -80,6 +80,8 @@ describe('database foundation', () => {
     expect(result.databaseConfigured).toBe(false)
     expect(result.pending).toContain('20260728_001_create_system_runs')
     expect(result.pending).toContain('20260728_008_create_model_evaluations')
+    expect(result.pending).toContain('20260729_009_create_odds')
+    expect(result.pending).toContain('20260729_012_create_manual_odds_audit')
     expect(writes).not.toHaveLength(0)
   })
 
@@ -173,6 +175,22 @@ describe('database foundation', () => {
           return [[], []]
         }
 
+        if (sql.includes('CREATE TABLE IF NOT EXISTS odds')) {
+          return [[], []]
+        }
+
+        if (sql.includes('CREATE TABLE IF NOT EXISTS analysis_runs')) {
+          return [[], []]
+        }
+
+        if (sql.includes('CREATE TABLE IF NOT EXISTS predictions')) {
+          return [[], []]
+        }
+
+        if (sql.includes('CREATE TABLE IF NOT EXISTS manual_odds_audit')) {
+          return [[], []]
+        }
+
         throw new Error(`Unexpected SQL: ${sql}`)
       }
     }
@@ -247,6 +265,26 @@ describe('database foundation', () => {
     expect(
       executedStatements.filter((statement) =>
         statement.includes('CREATE TABLE IF NOT EXISTS model_evaluations')
+      )
+    ).toHaveLength(1)
+    expect(
+      executedStatements.filter((statement) =>
+        statement.includes('CREATE TABLE IF NOT EXISTS odds')
+      )
+    ).toHaveLength(1)
+    expect(
+      executedStatements.filter((statement) =>
+        statement.includes('CREATE TABLE IF NOT EXISTS analysis_runs')
+      )
+    ).toHaveLength(1)
+    expect(
+      executedStatements.filter((statement) =>
+        statement.includes('CREATE TABLE IF NOT EXISTS predictions')
+      )
+    ).toHaveLength(1)
+    expect(
+      executedStatements.filter((statement) =>
+        statement.includes('CREATE TABLE IF NOT EXISTS manual_odds_audit')
       )
     ).toHaveLength(1)
     expect(writes.length).toBeGreaterThan(0)

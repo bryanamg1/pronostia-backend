@@ -252,16 +252,15 @@ export function createApiFootballClient({
       )
     },
 
-    async getFixturesByDateRange({ fromDate, toDate, timezone }) {
+    async getFixturesByDate({ date, timezone }) {
       return apiGet(
         'fixtures',
         {
-          from: fromDate,
-          to: toDate,
+          date,
           timezone
         },
         {
-          step: `fixtures:${fromDate}:${toDate}`
+          step: `fixtures:${date}`
         }
       )
     },
@@ -278,6 +277,28 @@ export function createApiFootballClient({
         },
         {
           step: `history:${leagueId}:${season}:${page}`
+        }
+      )
+    },
+
+    async getOddsByDateRange({
+      fromDate,
+      toDate,
+      timezone,
+      leagueId,
+      page = 1
+    }) {
+      return apiGet(
+        'odds',
+        {
+          date: fromDate,
+          timezone,
+          league: leagueId,
+          page,
+          ...(toDate ? { to: toDate } : {})
+        },
+        {
+          step: `odds:${leagueId ?? 'global'}:${fromDate}:${page}`
         }
       )
     },

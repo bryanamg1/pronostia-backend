@@ -2,6 +2,11 @@ import { randomUUID } from 'node:crypto'
 
 import { createGetHealthStatusUseCase } from '../application/system/getHealthStatus.js'
 import { createGetReadinessStatusUseCase } from '../application/system/getReadinessStatus.js'
+import { createGenerateScoredPredictionsUseCase } from '../application/prediction/generateScoredPredictions.js'
+import { createGetPredictionByIdUseCase } from '../application/prediction/getPredictionById.js'
+import { createListTodayPredictionsUseCase } from '../application/prediction/listTodayPredictions.js'
+import { createListTopPredictionsUseCase } from '../application/prediction/listTopPredictions.js'
+import { createRecordManualOddsUseCase } from '../application/prediction/recordManualOdds.js'
 import { createEvaluateHistoricalModelUseCase } from '../application/prediction/useCases/evaluateHistoricalModel.js'
 import { createGenerateHistoricalPredictionUseCase } from '../application/prediction/useCases/generateHistoricalPrediction.js'
 import { createImportHistoricalSeasonUseCase } from '../application/sports/importHistoricalSeason.js'
@@ -16,8 +21,11 @@ import { MySqlReadinessProbe } from './database.js'
 import { createCompetitionRepository } from '../infrastructure/database/repositories/CompetitionRepository.js'
 import { createFixtureRepository } from '../infrastructure/database/repositories/FixtureRepository.js'
 import { createHistoricalPredictionRepository } from '../infrastructure/database/repositories/HistoricalPredictionRepository.js'
+import { createManualOddsAuditRepository } from '../infrastructure/database/repositories/ManualOddsAuditRepository.js'
 import { createModelEvaluationRepository } from '../infrastructure/database/repositories/ModelEvaluationRepository.js'
 import { createModelVersionRepository } from '../infrastructure/database/repositories/ModelVersionRepository.js'
+import { createOddsRepository } from '../infrastructure/database/repositories/OddsRepository.js'
+import { createPredictionRepository } from '../infrastructure/database/repositories/PredictionRepository.js'
 import { createSystemRunRepository } from '../infrastructure/database/repositories/SystemRunRepository.js'
 import { createSportsSyncStateRepository } from '../infrastructure/database/repositories/SportsSyncStateRepository.js'
 import { createTeamRepository } from '../infrastructure/database/repositories/TeamRepository.js'
@@ -46,6 +54,11 @@ export function createDependencies({ env, loggerOverride } = {}) {
   const historicalPredictionRepository = createHistoricalPredictionRepository({
     poolManager
   })
+  const oddsRepository = createOddsRepository({ poolManager })
+  const manualOddsAuditRepository = createManualOddsAuditRepository({
+    poolManager
+  })
+  const predictionRepository = createPredictionRepository({ poolManager })
   const modelEvaluationRepository = createModelEvaluationRepository({
     poolManager
   })
@@ -127,6 +140,27 @@ export function createDependencies({ env, loggerOverride } = {}) {
     modelEvaluationRepository,
     modelConfig: predictionModelConfig
   })
+  const recordManualOdds = createRecordManualOddsUseCase({
+    fixtureRepository,
+    oddsRepository,
+    manualOddsAuditRepository
+  })
+  const generateScoredPredictions = createGenerateScoredPredictionsUseCase({
+    generateHistoricalPrediction,
+    oddsRepository,
+    predictionRepository,
+    lookaheadHours: env.sports.sync.lookaheadHours
+  })
+  const listTodayPredictions = createListTodayPredictionsUseCase({
+    predictionRepository,
+    lookaheadHours: env.sports.sync.lookaheadHours
+  })
+  const listTopPredictions = createListTopPredictionsUseCase({
+    listTodayPredictions
+  })
+  const getPredictionById = createGetPredictionByIdUseCase({
+    predictionRepository
+  })
 
   const scheduler = createScheduler({
     enabled: env.scheduler.enabled,
@@ -152,7 +186,12 @@ export function createDependencies({ env, loggerOverride } = {}) {
       listTodayFixtures,
       getFixtureById,
       generateHistoricalPrediction,
-      evaluateHistoricalModel
+      evaluateHistoricalModel,
+      recordManualOdds,
+      generateScoredPredictions,
+      listTodayPredictions,
+      listTopPredictions,
+      getPredictionById
     }
   }
 }

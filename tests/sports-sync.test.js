@@ -52,155 +52,164 @@ describe('sports sync use case', () => {
             }
           }
         },
-        async getFixturesByDateRange() {
+        async getFixturesByDate({ date }) {
+          if (date === '2026-07-28') {
+            return {
+              data: {
+                response: [
+                  {
+                    league: {
+                      id: 140
+                    },
+                    fixture: {
+                      id: 1,
+                      date: '2026-07-28T10:00:00.000Z',
+                      update: '2026-07-28T09:00:00.000Z',
+                      status: {
+                        short: 'NS'
+                      }
+                    },
+                    goals: {
+                      home: null,
+                      away: null
+                    },
+                    teams: {
+                      home: {
+                        id: 10,
+                        name: 'Team 10',
+                        logo: 'logo-10'
+                      },
+                      away: {
+                        id: 11,
+                        name: 'Team 11',
+                        logo: 'logo-11'
+                      }
+                    }
+                  },
+                  {
+                    league: {
+                      id: 140
+                    },
+                    fixture: {
+                      id: 2,
+                      date: '2026-07-28T12:00:00.000Z',
+                      update: '2026-07-28T11:00:00.000Z',
+                      status: {
+                        short: 'NS'
+                      }
+                    },
+                    goals: {
+                      home: null,
+                      away: null
+                    },
+                    teams: {
+                      home: {
+                        id: 12,
+                        name: 'Team 12',
+                        logo: 'logo-12'
+                      },
+                      away: {
+                        id: 13,
+                        name: 'Team 13',
+                        logo: 'logo-13'
+                      }
+                    }
+                  },
+                  {
+                    league: {
+                      id: 2
+                    },
+                    fixture: {
+                      id: 2,
+                      date: '2026-07-28T12:00:00.000Z',
+                      update: '2026-07-28T11:00:00.000Z',
+                      status: {
+                        short: 'NS'
+                      }
+                    },
+                    goals: {
+                      home: null,
+                      away: null
+                    },
+                    teams: {
+                      home: {
+                        id: 14,
+                        name: 'Team 14',
+                        logo: 'logo-14'
+                      },
+                      away: {
+                        id: 15,
+                        name: 'Team 15',
+                        logo: 'logo-15'
+                      }
+                    }
+                  },
+                  {
+                    league: {
+                      id: 2
+                    },
+                    fixture: {
+                      id: 3,
+                      date: '2026-07-28T14:00:00.000Z',
+                      update: '2026-07-28T13:00:00.000Z',
+                      status: {
+                        short: 'NS'
+                      }
+                    },
+                    goals: {
+                      home: null,
+                      away: null
+                    },
+                    teams: {
+                      home: {
+                        id: 16,
+                        name: 'Team 16',
+                        logo: 'logo-16'
+                      },
+                      away: {
+                        id: 17,
+                        name: 'Team 17',
+                        logo: 'logo-17'
+                      }
+                    }
+                  },
+                  {
+                    league: {
+                      id: 999
+                    },
+                    fixture: {
+                      id: 4,
+                      date: '2026-07-28T16:00:00.000Z',
+                      update: '2026-07-28T15:00:00.000Z',
+                      status: {
+                        short: 'NS'
+                      }
+                    },
+                    goals: {
+                      home: null,
+                      away: null
+                    },
+                    teams: {
+                      home: {
+                        id: 18,
+                        name: 'Team 18',
+                        logo: 'logo-18'
+                      },
+                      away: {
+                        id: 19,
+                        name: 'Team 19',
+                        logo: 'logo-19'
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+
           return {
             data: {
               response: [
-                {
-                  league: {
-                    id: 140
-                  },
-                  fixture: {
-                    id: 1,
-                    date: '2026-07-28T10:00:00.000Z',
-                    update: '2026-07-28T09:00:00.000Z',
-                    status: {
-                      short: 'NS'
-                    }
-                  },
-                  goals: {
-                    home: null,
-                    away: null
-                  },
-                  teams: {
-                    home: {
-                      id: 10,
-                      name: 'Team 10',
-                      logo: 'logo-10'
-                    },
-                    away: {
-                      id: 11,
-                      name: 'Team 11',
-                      logo: 'logo-11'
-                    }
-                  }
-                },
-                {
-                  league: {
-                    id: 140
-                  },
-                  fixture: {
-                    id: 2,
-                    date: '2026-07-28T12:00:00.000Z',
-                    update: '2026-07-28T11:00:00.000Z',
-                    status: {
-                      short: 'NS'
-                    }
-                  },
-                  goals: {
-                    home: null,
-                    away: null
-                  },
-                  teams: {
-                    home: {
-                      id: 12,
-                      name: 'Team 12',
-                      logo: 'logo-12'
-                    },
-                    away: {
-                      id: 13,
-                      name: 'Team 13',
-                      logo: 'logo-13'
-                    }
-                  }
-                },
-                {
-                  league: {
-                    id: 2
-                  },
-                  fixture: {
-                    id: 2,
-                    date: '2026-07-28T12:00:00.000Z',
-                    update: '2026-07-28T11:00:00.000Z',
-                    status: {
-                      short: 'NS'
-                    }
-                  },
-                  goals: {
-                    home: null,
-                    away: null
-                  },
-                  teams: {
-                    home: {
-                      id: 14,
-                      name: 'Team 14',
-                      logo: 'logo-14'
-                    },
-                    away: {
-                      id: 15,
-                      name: 'Team 15',
-                      logo: 'logo-15'
-                    }
-                  }
-                },
-                {
-                  league: {
-                    id: 2
-                  },
-                  fixture: {
-                    id: 3,
-                    date: '2026-07-28T14:00:00.000Z',
-                    update: '2026-07-28T13:00:00.000Z',
-                    status: {
-                      short: 'NS'
-                    }
-                  },
-                  goals: {
-                    home: null,
-                    away: null
-                  },
-                  teams: {
-                    home: {
-                      id: 16,
-                      name: 'Team 16',
-                      logo: 'logo-16'
-                    },
-                    away: {
-                      id: 17,
-                      name: 'Team 17',
-                      logo: 'logo-17'
-                    }
-                  }
-                },
-                {
-                  league: {
-                    id: 999
-                  },
-                  fixture: {
-                    id: 4,
-                    date: '2026-07-28T16:00:00.000Z',
-                    update: '2026-07-28T15:00:00.000Z',
-                    status: {
-                      short: 'NS'
-                    }
-                  },
-                  goals: {
-                    home: null,
-                    away: null
-                  },
-                  teams: {
-                    home: {
-                      id: 18,
-                      name: 'Team 18',
-                      logo: 'logo-18'
-                    },
-                    away: {
-                      id: 19,
-                      name: 'Team 19',
-                      logo: 'logo-19'
-                    }
-                  }
-                },
                 {
                   league: {
                     id: 140
@@ -400,7 +409,7 @@ describe('sports sync use case', () => {
             }
           }
         },
-        async getFixturesByDateRange() {
+        async getFixturesByDate() {
           return {
             data: {
               response: [
