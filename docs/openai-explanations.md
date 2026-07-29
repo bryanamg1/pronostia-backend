@@ -45,7 +45,9 @@ El backend envia:
 - listas cerradas de hechos permitidos;
 - aviso de uso responsable.
 
-La salida se solicita mediante Structured Output con `additionalProperties=false`, `maxItems`, `uniqueItems` y enums cerrados por campo.
+La salida se solicita mediante Structured Output con `additionalProperties=false`, `maxItems` y enums cerrados por campo.
+
+La unicidad de listas como `supportingFactors`, `counterFactors` y `warnings` se valida nuevamente en backend para mantener compatibilidad con la superficie real de `Responses API`.
 
 Despues de recibir la respuesta, el backend valida nuevamente con Zod y descarta la salida si:
 
@@ -110,3 +112,15 @@ No se persisten:
 - prompts privados completos;
 - respuestas crudas innecesarias;
 - Chain-of-Thought.
+
+## Validacion real controlada
+
+La fase se cerro con una llamada real controlada sobre una prediccion `CONSIDER` ya persistida.
+
+Esa validacion confirmo que:
+
+- OpenAI sigue siendo opcional;
+- la explicacion se genera sin alterar probabilidades ni recomendaciones;
+- el ledger registra tanto intentos fallidos con costo `0` como intentos exitosos con tokens y costo auditables;
+- el presupuesto mensual se actualiza despues del intento exitoso;
+- el fallback determinista sigue disponible ante fallos de proveedor o invalidaciones del contrato.

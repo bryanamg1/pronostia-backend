@@ -9,7 +9,7 @@ Backend de PronostIA para orquestar analisis prepartido de futbol, exponer una A
 - Fase 2 completada con cierre tecnico sobre ingesta deportiva acotada, cache historica y scheduler.
 - Fase 3 completada tecnicamente con motor estadistico determinista y evaluacion historica real sobre Premier League 2024.
 - Fase 4 completada tecnicamente con persistencia de odds, scoring determinista, endpoints de predicciones y validacion empirica controlada sobre una muestra real de API-Football.
-- Fase 5 en `READY_FOR_REVIEW` sobre la rama de trabajo actual: capa explicativa opcional con OpenAI, presupuesto mensual, allowlist cerrada y fallback determinista sobre predicciones ya persistidas.
+- Fase 5 completada tecnicamente con explicaciones opcionales OpenAI, validacion estructurada, presupuesto mensual, ledger de coste y fallback determinista sobre predicciones ya persistidas.
 - Restriccion externa conocida: la cuenta API-Football Free validada no tiene acceso a `season=2026` para las ligas trianguladas; la evidencia real disponible en esta fase fue historica.
 - OpenAI no recalcula probabilidades ni recomendaciones; solo puede seleccionar explicaciones estructuradas a partir de hechos ya calculados.
 
@@ -147,6 +147,8 @@ La capa explicativa de Fase 5 agrega:
 - presupuesto mensual con alerta al `70 %`, modo degradado al `85 %` y bloqueo al `100 %`;
 - fallback determinista cuando OpenAI no esta configurado, falla, devuelve una salida invalida o queda bloqueado por presupuesto;
 - validacion posterior con allowlist cerrada y descarte automatico de contenido no permitido.
+
+La fase quedo cerrada con una validacion real controlada sobre una prediccion elegible persistida, sin modificar la probabilidad estadistica ni la recomendacion original.
 
 Documentacion especifica:
 
