@@ -4,6 +4,7 @@ import {
   selectPreferredMarketOdds
 } from '../../domain/prediction/services/oddsScoring.js'
 import { RECOMMENDATION_TYPES } from '../../domain/prediction/constants/scoringDefaults.js'
+import { createPendingExplanation } from '../../domain/prediction/services/predictionExplanation.js'
 
 function toWindowBounds(now, lookaheadHours) {
   const from = new Date(now)
@@ -98,7 +99,10 @@ export function createGenerateScoredPredictionsUseCase({
         riskLevel: candidate.riskLevel,
         recommendation: candidate.recommendation,
         modelVersion: modelResult.modelVersion.version,
-        explanation: null,
+        explanation:
+          candidate.recommendation === RECOMMENDATION_TYPES.CONSIDER
+            ? createPendingExplanation()
+            : null,
         sources: candidate.source,
         isDailyTop:
           topCandidate &&

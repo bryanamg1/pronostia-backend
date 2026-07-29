@@ -1,7 +1,7 @@
 import { createRuntime } from '../../config/index.js'
 import { ValidationError } from '../../shared/errors/AppError.js'
 
-function parseArgs(argv) {
+export function parseArgs(argv) {
   return argv.reduce((accumulator, argument) => {
     if (!argument.startsWith('--')) {
       return accumulator
@@ -13,7 +13,7 @@ function parseArgs(argv) {
   }, {})
 }
 
-function readOptionalArg(args, keys, fallback = null) {
+export function readOptionalArg(args, keys, fallback = null) {
   for (const key of keys) {
     if (args[key] !== undefined) {
       return args[key]
@@ -77,6 +77,31 @@ async function main() {
       const result = await runtime.useCases.generateScoredPredictions({
         fixtureId
       })
+      process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)
+      return
+    }
+
+    if (command === 'explain') {
+      const predictionId = Number(
+        readOptionalArg(
+          args,
+          ['predictionId', 'predictionid', 'npm_config_predictionid'],
+          0
+        )
+      )
+      const force =
+        readOptionalArg(args, ['force', 'npm_config_force'], 'false') === 'true'
+
+      if (Number.isInteger(predictionId) && predictionId > 0) {
+        const result = await runtime.useCases.explainPrediction({
+          predictionId,
+          force
+        })
+        process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)
+        return
+      }
+
+      const result = await runtime.useCases.explainTodayPredictions()
       process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)
       return
     }

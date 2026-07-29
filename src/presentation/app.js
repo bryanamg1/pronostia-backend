@@ -11,6 +11,7 @@ import { createHttpLogger } from './http/middlewares/httpLogger.js'
 import { notFoundHandler } from './http/middlewares/notFoundHandler.js'
 import { createRateLimitMiddleware } from './http/middlewares/rateLimit.js'
 import { createRequestIdMiddleware } from './http/middlewares/requestIdMiddleware.js'
+import { createRequireAdminAccess } from './http/middlewares/requireAdminAccess.js'
 import { createCompetitionsRoutes } from './http/routes/competitionsRoutes.js'
 import { createFixturesRoutes } from './http/routes/fixturesRoutes.js'
 import { createHealthRoutes } from './http/routes/healthRoutes.js'
@@ -30,6 +31,8 @@ export function createApp({
   listTopPredictions,
   getPredictionById,
   recordManualOdds,
+  explainPrediction,
+  explainTodayPredictions,
   enableTestRoutes = false,
   jsonLimit = DEFAULT_JSON_LIMIT
 }) {
@@ -81,16 +84,35 @@ export function createApp({
     listTodayPredictions &&
     listTopPredictions &&
     getPredictionById &&
-    recordManualOdds
+    recordManualOdds &&
+    explainPrediction &&
+    explainTodayPredictions
   ) {
+    const requireAdminAccess = createRequireAdminAccess({
+      tokenConfigured: env.admin.tokenConfigured,
+      token: env.admin.token
+    })
+    const adminRateLimit = createRateLimitMiddleware({
+      windowMs: env.admin.rateLimitWindowMs,
+      max: env.admin.rateLimitMaxRequests
+    })
     const predictionsController = createPredictionsController({
       listTodayPredictions,
       listTopPredictions,
       getPredictionById,
-      recordManualOdds
+      recordManualOdds,
+      explainPrediction,
+      explainTodayPredictions
     })
 
-    app.use('/api', createPredictionsRoutes({ predictionsController }))
+    app.use(
+      '/api',
+      createPredictionsRoutes({
+        predictionsController,
+        requireAdminAccess,
+        adminRateLimit
+      })
+    )
   }
 
   if (enableTestRoutes) {

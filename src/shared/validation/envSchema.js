@@ -13,6 +13,11 @@ const intString = z
   .transform((value) => Number(value))
   .pipe(z.number().int().positive())
 
+const floatString = z
+  .union([z.number(), z.string()])
+  .transform((value) => Number(value))
+  .pipe(z.number().nonnegative())
+
 export const runtimeEnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']),
   PORT: intString,
@@ -56,7 +61,31 @@ export const runtimeEnvSchema = z.object({
     .pipe(z.number().int().min(1).max(100)),
   SPORTS_SYNC_LOOKAHEAD_HOURS: intString,
   SPORTS_SYNC_MAX_FIXTURES: intString,
-  SPORTS_SYNC_HISTORY_MAX_PAGES_PER_RUN: intString
+  SPORTS_SYNC_HISTORY_MAX_PAGES_PER_RUN: intString,
+  OPENAI_API_KEY: z.string().optional().default(''),
+  OPENAI_ENABLED: booleanString.optional().default(false),
+  OPENAI_BASE_URL: z.string().url(),
+  OPENAI_MODEL: z.string().min(1),
+  OPENAI_MONTHLY_BUDGET_USD: floatString,
+  OPENAI_MONTHLY_ALERT_PERCENT: z
+    .union([z.string(), z.number()])
+    .transform((value) => Number(value))
+    .pipe(z.number().int().min(1).max(100)),
+  OPENAI_MONTHLY_DEGRADED_PERCENT: z
+    .union([z.string(), z.number()])
+    .transform((value) => Number(value))
+    .pipe(z.number().int().min(1).max(100)),
+  OPENAI_HARD_LIMIT_PERCENT: z
+    .union([z.string(), z.number()])
+    .transform((value) => Number(value))
+    .pipe(z.number().int().min(1).max(100)),
+  OPENAI_TIMEOUT_MS: intString,
+  OPENAI_INPUT_COST_USD_PER_1M_TOKENS: floatString,
+  OPENAI_CACHED_INPUT_COST_USD_PER_1M_TOKENS: floatString,
+  OPENAI_OUTPUT_COST_USD_PER_1M_TOKENS: floatString,
+  ADMIN_API_TOKEN: z.string().optional().default(''),
+  ADMIN_RATE_LIMIT_WINDOW_MS: intString.optional().default(60000),
+  ADMIN_RATE_LIMIT_MAX_REQUESTS: intString.optional().default(20)
 })
 
 export function formatEnvError(error) {

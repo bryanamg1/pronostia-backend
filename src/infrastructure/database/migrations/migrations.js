@@ -10,6 +10,7 @@ import { migration as createOddsMigration } from './20260729_009_create_odds.js'
 import { migration as createAnalysisRunsMigration } from './20260729_010_create_analysis_runs.js'
 import { migration as createPredictionsMigration } from './20260729_011_create_predictions.js'
 import { migration as createManualOddsAuditMigration } from './20260729_012_create_manual_odds_audit.js'
+import { migration as createOpenAiUsageRecordsMigration } from './20260729_013_create_openai_usage_records.js'
 
 export const migrations = [
   createSystemRunsMigration,
@@ -23,5 +24,6 @@ export const migrations = [
   createOddsMigration,
   createAnalysisRunsMigration,
   createPredictionsMigration,
-  createManualOddsAuditMigration
+  createManualOddsAuditMigration,
+  createOpenAiUsageRecordsMigration
 ]
