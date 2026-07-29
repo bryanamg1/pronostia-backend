@@ -185,5 +185,11 @@ describe('listTodayFixtures use case', () => {
         team: '999'
       })
     ).resolves.toEqual([])
+    await expect(
+      listTodayFixtures({
+        competition: 'premier-league',
+        team: '10'
+      })
+    ).resolves.toHaveLength(1)
   })
 })

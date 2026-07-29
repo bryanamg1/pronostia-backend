@@ -1,3 +1,9 @@
+import { AUTHORIZED_COMPETITIONS } from '../../domain/sports/authorizedCompetitions.js'
+
+const authorizedCompetitionOrder = new Map(
+  AUTHORIZED_COMPETITIONS.map((competition, index) => [competition.key, index])
+)
+
 function getSeasonValue(competition) {
   return Number.isInteger(competition?.season) ? competition.season : -1
 }
@@ -20,6 +26,10 @@ export function createListCompetitionsUseCase({ competitionRepository }) {
     const competitionsByKey = new Map()
 
     for (const competition of competitions) {
+      if (!authorizedCompetitionOrder.has(competition.targetKey)) {
+        continue
+      }
+
       competitionsByKey.set(
         competition.targetKey,
         pickPreferredCompetition(
@@ -29,6 +39,10 @@ export function createListCompetitionsUseCase({ competitionRepository }) {
       )
     }
 
-    return Array.from(competitionsByKey.values())
+    return Array.from(competitionsByKey.values()).sort(
+      (left, right) =>
+        authorizedCompetitionOrder.get(left.targetKey) -
+        authorizedCompetitionOrder.get(right.targetKey)
+    )
   }
 }
