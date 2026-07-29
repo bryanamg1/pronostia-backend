@@ -13,7 +13,11 @@ export async function startServer(options = {}) {
     getReadinessStatus: runtime.useCases.getReadinessStatus,
     listCompetitions: runtime.useCases.listCompetitions,
     listTodayFixtures: runtime.useCases.listTodayFixtures,
-    getFixtureById: runtime.useCases.getFixtureById
+    getFixtureById: runtime.useCases.getFixtureById,
+    listTodayPredictions: runtime.useCases.listTodayPredictions,
+    listTopPredictions: runtime.useCases.listTopPredictions,
+    getPredictionById: runtime.useCases.getPredictionById,
+    recordManualOdds: runtime.useCases.recordManualOdds
   })
 
   const server = await new Promise((resolve) => {

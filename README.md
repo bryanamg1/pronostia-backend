@@ -8,8 +8,9 @@ Backend de PronostIA para orquestar analisis prepartido de futbol, exponer una A
 - Fase 1 completada y fusionada en ramas estables.
 - Fase 2 completada con cierre tecnico sobre ingesta deportiva acotada, cache historica y scheduler.
 - Fase 3 completada tecnicamente con motor estadistico determinista y evaluacion historica real sobre Premier League 2024.
+- Fase 4 completada tecnicamente con persistencia de odds, scoring determinista, endpoints de predicciones y validacion empirica controlada sobre una muestra real de API-Football.
 - Restriccion externa conocida: la cuenta API-Football Free validada no tiene acceso a `season=2026` para las ligas trianguladas; la evidencia real disponible en esta fase fue historica.
-- No existen aun pronosticos, odds productivas ni OpenAI operativo.
+- OpenAI sigue deshabilitado y queda fuera del alcance actual.
 
 ## Stack
 
@@ -81,6 +82,7 @@ npm run check
 - `npm run sync:sports`
 - `npm run sync:sports:history -- --competition=premier-league --season=2024`
 - `npm run model:predict -- --fixtureId=<id>`
+- `npm run model:score -- --fixtureId=<id>`
 - `npm run model:evaluate -- --competition=premier-league --season=2024`
 
 ## Health endpoints
@@ -95,6 +97,10 @@ Documentacion publica: [docs/api/health-endpoints.md](./docs/api/health-endpoint
 - `GET /api/competitions`
 - `GET /api/fixtures/today`
 - `GET /api/fixtures/:id`
+- `GET /api/predictions/today`
+- `GET /api/predictions/top`
+- `GET /api/predictions/:id`
+- `POST /api/admin/odds/manual`
 
 Documentacion publica: [docs/api/sports-endpoints.md](./docs/api/sports-endpoints.md)
 Documentacion operativa de ingesta/cache: [docs/sports-ingestion.md](./docs/sports-ingestion.md)
@@ -109,6 +115,11 @@ La documentacion tecnica del motor determinista y su modo historico vive en:
 
 - [docs/statistical-model.md](./docs/statistical-model.md)
 - [docs/model-evaluation.md](./docs/model-evaluation.md)
+
+La salida de scoring con odds y reglas de abstencion queda documentada en:
+
+- [docs/statistical-model.md](./docs/statistical-model.md)
+- [docs/api/sports-endpoints.md](./docs/api/sports-endpoints.md)
 
 ## Seguridad de dependencias
 

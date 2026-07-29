@@ -65,11 +65,8 @@ describe('api-football client', () => {
       providerId: 140,
       season: 2026
     })
-    await client.getFixturesByDateRange({
-      leagueId: 140,
-      season: 2026,
-      fromDate: '2026-07-28',
-      toDate: '2026-07-29',
+    await client.getFixturesByDate({
+      date: '2026-07-28',
       timezone: 'America/Argentina/Buenos_Aires'
     })
 
@@ -85,6 +82,37 @@ describe('api-football client', () => {
       remaining: 88
     })
     expect(JSON.stringify(entries)).not.toContain('secret-token')
+  })
+
+  test('uses the daily fixtures date parameter instead of the invalid from/to combination', async () => {
+    const { logger } = createTestLogger()
+    const fetchImpl = jest.fn(async () => {
+      return new Response(JSON.stringify({ response: [] }), {
+        status: 200
+      })
+    })
+
+    const client = createApiFootballClient({
+      baseUrl: 'https://example.test',
+      apiKey: 'secret-token',
+      minIntervalMs: 7000,
+      retryAfterFallbackMs: 65000,
+      softLimitPercent: 80,
+      logger,
+      fetchImpl,
+      nowMs: () => 0,
+      sleep: async () => {}
+    })
+
+    await client.getFixturesByDate({
+      date: '2026-07-29',
+      timezone: 'America/Argentina/Buenos_Aires'
+    })
+
+    const requestedUrl = fetchImpl.mock.calls[0][0].toString()
+    expect(requestedUrl).toContain('date=2026-07-29')
+    expect(requestedUrl).not.toContain('from=')
+    expect(requestedUrl).not.toContain('to=')
   })
 
   test('retries HTTP 429 with retry-after before failing', async () => {

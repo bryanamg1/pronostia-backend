@@ -24,6 +24,7 @@
     "sync:sports": "node ./src/infrastructure/sports/cli.js",
     "sync:sports:history": "node ./src/infrastructure/sports/history-cli.js",
     "model:predict": "node ./src/infrastructure/prediction/cli.js",
+    "model:score": "node ./src/infrastructure/prediction/cli.js score",
     "model:evaluate": "node ./src/infrastructure/prediction/cli.js"
   },
   "jest": {
