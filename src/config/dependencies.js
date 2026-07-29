@@ -21,6 +21,7 @@ import { createGetFixtureByIdUseCase } from '../application/sports/getFixtureByI
 import { createListCompetitionsUseCase } from '../application/sports/listCompetitions.js'
 import { createListTodayFixturesUseCase } from '../application/sports/listTodayFixtures.js'
 import { createRunScheduledSportsSyncUseCase } from '../application/sports/runScheduledSportsSync.js'
+import { createFixturePublicViewService } from '../application/sports/services/fixturePublicView.js'
 import { createSyncSportsDataUseCase } from '../application/sports/syncSportsData.js'
 import { DEFAULT_PREDICTION_MODEL_CONFIG } from '../domain/prediction/constants/modelDefaults.js'
 import { MySqlReadinessProbe } from './database.js'
@@ -139,11 +140,15 @@ export function createDependencies({ env, loggerOverride } = {}) {
   })
   const listTodayFixtures = createListTodayFixturesUseCase({
     fixtureRepository,
+    predictionRepository,
+    fixturePublicViewService,
     lookaheadHours: env.sports.sync.lookaheadHours,
     maxFixtures: env.sports.sync.maxFixtures
   })
   const getFixtureById = createGetFixtureByIdUseCase({
-    fixtureRepository
+    fixtureRepository,
+    predictionRepository,
+    fixturePublicViewService
   })
   const predictionModelConfig = DEFAULT_PREDICTION_MODEL_CONFIG
   const generateHistoricalPrediction =
@@ -179,6 +184,7 @@ export function createDependencies({ env, loggerOverride } = {}) {
   const listStoredTopPredictions = createListTopPredictionsUseCase({
     listTodayPredictions: listStoredTodayPredictions
   })
+  const fixturePublicViewService = createFixturePublicViewService()
   const predictionPublicViewService = createPredictionPublicViewService({
     fixtureRepository,
     modelConfig: predictionModelConfig
