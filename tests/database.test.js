@@ -79,6 +79,7 @@ describe('database foundation', () => {
 
     expect(result.databaseConfigured).toBe(false)
     expect(result.pending).toContain('20260728_001_create_system_runs')
+    expect(result.pending).toContain('20260728_008_create_model_evaluations')
     expect(writes).not.toHaveLength(0)
   })
 
@@ -160,6 +161,18 @@ describe('database foundation', () => {
           return [[], []]
         }
 
+        if (sql.includes('CREATE TABLE IF NOT EXISTS model_versions')) {
+          return [[], []]
+        }
+
+        if (sql.includes('CREATE TABLE IF NOT EXISTS historical_predictions')) {
+          return [[], []]
+        }
+
+        if (sql.includes('CREATE TABLE IF NOT EXISTS model_evaluations')) {
+          return [[], []]
+        }
+
         throw new Error(`Unexpected SQL: ${sql}`)
       }
     }
@@ -219,6 +232,21 @@ describe('database foundation', () => {
     expect(
       executedStatements.filter((statement) =>
         statement.includes('CREATE TABLE IF NOT EXISTS fixtures')
+      )
+    ).toHaveLength(1)
+    expect(
+      executedStatements.filter((statement) =>
+        statement.includes('CREATE TABLE IF NOT EXISTS model_versions')
+      )
+    ).toHaveLength(1)
+    expect(
+      executedStatements.filter((statement) =>
+        statement.includes('CREATE TABLE IF NOT EXISTS historical_predictions')
+      )
+    ).toHaveLength(1)
+    expect(
+      executedStatements.filter((statement) =>
+        statement.includes('CREATE TABLE IF NOT EXISTS model_evaluations')
       )
     ).toHaveLength(1)
     expect(writes.length).toBeGreaterThan(0)

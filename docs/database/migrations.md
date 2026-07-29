@@ -22,6 +22,14 @@ npm run migrate
 npm run migrate:status
 ```
 
+## Importar historia real controlada
+
+```bash
+npm run sync:sports:history -- --competition=premier-league --season=2024
+```
+
+Este flujo reutiliza un payload local ignorado por Git cuando existe. Si no existe, realiza una sola consulta controlada a API-Football para `league=39`, `season=2024`, `status=FT`, conserva el payload localmente y luego ejecuta upserts cronologicos idempotentes.
+
 Si la configuracion de MySQL no esta completa o las credenciales no son validas, el comando responde con un resultado controlado o un error sanitizado. No se deben publicar credenciales ni connection strings completas.
 
 ## Tablas gestionadas actualmente
@@ -31,6 +39,9 @@ Si la configuracion de MySQL no esta completa o las credenciales no son validas,
 - `teams`
 - `fixtures`
 - `sports_sync_state`
+- `model_versions`
+- `historical_predictions`
+- `model_evaluations`
 
 ## Alcance actual
 
@@ -39,6 +50,9 @@ Si la configuracion de MySQL no esta completa o las credenciales no son validas,
 - `teams` mantiene el cache persistente minimo de equipos observados en fixtures.
 - `fixtures` concentra tanto la ventana diaria como el historico por temporada que se vaya backfilleando de forma incremental.
 - `sports_sync_state` guarda checkpoints durables para evitar rehacer paginas historicas ya sincronizadas.
+- `model_versions` versiona parametros reproducibles del motor estadistico.
+- `historical_predictions` persiste predicciones historicas auditables con su cutoff temporal.
+- `model_evaluations` registra metricas agregadas de backtesting cronologico por competicion y temporada.
 
 ## Revertir
 
