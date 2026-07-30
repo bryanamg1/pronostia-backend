@@ -58,29 +58,39 @@ describe('sports endpoints', () => {
     const { logger } = createTestLogger()
     const fixture = {
       id: 1,
-      providerId: 9001,
       kickoffAt: '2026-07-28T10:00:00.000Z',
       status: 'NS',
-      homeGoals: null,
-      awayGoals: null,
+      isHistorical: false,
       competition: {
         id: 1,
-        targetKey: 'laliga',
-        providerId: 140,
+        key: 'laliga',
         name: 'La Liga',
         country: 'Spain',
         season: 2026
       },
       homeTeam: {
         id: 10,
-        providerId: 100,
+        key: '10',
         name: 'Home'
       },
       awayTeam: {
         id: 11,
-        providerId: 101,
+        key: '11',
         name: 'Away'
+      },
+      prediction: {
+        id: 17,
+        market: 'MATCH_RESULT',
+        selection: 'HOME',
+        recommendation: 'CONSIDER',
+        confidenceScore: 82
       }
+    }
+    const fixtureFiltersCalls = []
+    const listTodayFixtures = async (filters) => {
+      fixtureFiltersCalls.push(filters)
+
+      return [fixture]
     }
 
     const app = createApp({
@@ -108,7 +118,7 @@ describe('sports endpoints', () => {
           }
         }
       }),
-      listTodayFixtures: async () => [fixture],
+      listTodayFixtures,
       getFixtureById: async (id) => {
         if (String(id) === '1') {
           return fixture
@@ -121,10 +131,27 @@ describe('sports endpoints', () => {
     const listResponse = await request(app).get('/api/fixtures/today')
     expect(listResponse.status).toBe(200)
     expect(listResponse.body.data).toHaveLength(1)
+    expect(listResponse.body.data[0].prediction.id).toBe(17)
+    expect(listResponse.body.data[0].homeTeam.providerId).toBeUndefined()
+    expect(listResponse.body.data[0].competition.providerId).toBeUndefined()
+    expect(fixtureFiltersCalls[0]).toEqual({
+      competition: undefined,
+      team: undefined
+    })
+
+    const filteredResponse = await request(app).get(
+      '/api/fixtures/today?competition=laliga&team=10'
+    )
+    expect(filteredResponse.status).toBe(200)
+    expect(fixtureFiltersCalls.at(-1)).toEqual({
+      competition: 'laliga',
+      team: '10'
+    })
 
     const detailResponse = await request(app).get('/api/fixtures/1')
     expect(detailResponse.status).toBe(200)
     expect(detailResponse.body.data.id).toBe(1)
+    expect(detailResponse.body.data.awayTeam.key).toBe('11')
 
     const missingResponse = await request(app).get('/api/fixtures/999')
     expect(missingResponse.status).toBe(404)

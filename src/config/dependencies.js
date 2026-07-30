@@ -2,13 +2,17 @@ import { randomUUID } from 'node:crypto'
 
 import { createGetHealthStatusUseCase } from '../application/system/getHealthStatus.js'
 import { createGetReadinessStatusUseCase } from '../application/system/getReadinessStatus.js'
+import { createGetLatestSystemRunUseCase } from '../application/system/getLatestSystemRun.js'
 import { createGenerateScoredPredictionsUseCase } from '../application/prediction/generateScoredPredictions.js'
-import { createGetPredictionByIdUseCase } from '../application/prediction/getPredictionById.js'
+import { createGetPublicPredictionByIdUseCase } from '../application/prediction/getPublicPredictionById.js'
 import { createExplainPredictionUseCase } from '../application/prediction/explainPrediction.js'
 import { createExplainTodayPredictionsUseCase } from '../application/prediction/explainTodayPredictions.js'
+import { createListPublicTodayPredictionsUseCase } from '../application/prediction/listPublicTodayPredictions.js'
+import { createListPublicTopPredictionsUseCase } from '../application/prediction/listPublicTopPredictions.js'
 import { createListTodayPredictionsUseCase } from '../application/prediction/listTodayPredictions.js'
 import { createListTopPredictionsUseCase } from '../application/prediction/listTopPredictions.js'
 import { createRecordManualOddsUseCase } from '../application/prediction/recordManualOdds.js'
+import { createPredictionPublicViewService } from '../application/prediction/services/predictionPublicView.js'
 import { createEvaluateHistoricalModelUseCase } from '../application/prediction/useCases/evaluateHistoricalModel.js'
 import { createGenerateHistoricalPredictionUseCase } from '../application/prediction/useCases/generateHistoricalPrediction.js'
 import { createImportHistoricalSeasonUseCase } from '../application/sports/importHistoricalSeason.js'
@@ -17,6 +21,7 @@ import { createGetFixtureByIdUseCase } from '../application/sports/getFixtureByI
 import { createListCompetitionsUseCase } from '../application/sports/listCompetitions.js'
 import { createListTodayFixturesUseCase } from '../application/sports/listTodayFixtures.js'
 import { createRunScheduledSportsSyncUseCase } from '../application/sports/runScheduledSportsSync.js'
+import { createFixturePublicViewService } from '../application/sports/services/fixturePublicView.js'
 import { createSyncSportsDataUseCase } from '../application/sports/syncSportsData.js'
 import { DEFAULT_PREDICTION_MODEL_CONFIG } from '../domain/prediction/constants/modelDefaults.js'
 import { MySqlReadinessProbe } from './database.js'
@@ -37,6 +42,20 @@ import { createLogger } from '../infrastructure/logging/createLogger.js'
 import { createOpenAiResponsesClient } from '../infrastructure/openai/createOpenAiResponsesClient.js'
 import { createScheduler } from '../infrastructure/scheduler/createScheduler.js'
 import { createApiFootballClient } from '../infrastructure/sports/apiFootball/createApiFootballClient.js'
+
+function assertDependencyContract(name, dependency, methods) {
+  const missingMethods = methods.filter(
+    (methodName) => typeof dependency?.[methodName] !== 'function'
+  )
+
+  if (missingMethods.length > 0) {
+    throw new Error(
+      `Invalid dependency composition: ${name} must implement ${missingMethods.join(', ')}`
+    )
+  }
+
+  return dependency
+}
 
 export function createDependencies({ env, loggerOverride } = {}) {
   const loggerHandle = createLogger(env, {
@@ -94,6 +113,9 @@ export function createDependencies({ env, loggerOverride } = {}) {
     environment: env.nodeEnv,
     readinessProbe
   })
+  const getLatestSystemRun = createGetLatestSystemRunUseCase({
+    systemRunRepository
+  })
   const runScheduledSystemCheck = createRunScheduledSystemCheckUseCase({
     logger: loggerHandle.logger,
     systemRunRepository,
@@ -122,6 +144,11 @@ export function createDependencies({ env, loggerOverride } = {}) {
   const listCompetitions = createListCompetitionsUseCase({
     competitionRepository
   })
+  const fixturePublicViewService = assertDependencyContract(
+    'fixturePublicViewService',
+    createFixturePublicViewService(),
+    ['toPublicFixture']
+  )
   const importHistoricalSeason = createImportHistoricalSeasonUseCase({
     logger: loggerHandle.logger,
     env,
@@ -132,11 +159,15 @@ export function createDependencies({ env, loggerOverride } = {}) {
   })
   const listTodayFixtures = createListTodayFixturesUseCase({
     fixtureRepository,
+    predictionRepository,
+    fixturePublicViewService,
     lookaheadHours: env.sports.sync.lookaheadHours,
     maxFixtures: env.sports.sync.maxFixtures
   })
   const getFixtureById = createGetFixtureByIdUseCase({
-    fixtureRepository
+    fixtureRepository,
+    predictionRepository,
+    fixturePublicViewService
   })
   const predictionModelConfig = DEFAULT_PREDICTION_MODEL_CONFIG
   const generateHistoricalPrediction =
@@ -165,15 +196,28 @@ export function createDependencies({ env, loggerOverride } = {}) {
     predictionRepository,
     lookaheadHours: env.sports.sync.lookaheadHours
   })
-  const listTodayPredictions = createListTodayPredictionsUseCase({
+  const listStoredTodayPredictions = createListTodayPredictionsUseCase({
     predictionRepository,
     lookaheadHours: env.sports.sync.lookaheadHours
   })
-  const listTopPredictions = createListTopPredictionsUseCase({
-    listTodayPredictions
+  const listStoredTopPredictions = createListTopPredictionsUseCase({
+    listTodayPredictions: listStoredTodayPredictions
   })
-  const getPredictionById = createGetPredictionByIdUseCase({
-    predictionRepository
+  const predictionPublicViewService = createPredictionPublicViewService({
+    fixtureRepository,
+    modelConfig: predictionModelConfig
+  })
+  const listTodayPredictions = createListPublicTodayPredictionsUseCase({
+    listStoredTodayPredictions,
+    predictionPublicViewService
+  })
+  const listTopPredictions = createListPublicTopPredictionsUseCase({
+    listStoredTopPredictions,
+    predictionPublicViewService
+  })
+  const getPredictionById = createGetPublicPredictionByIdUseCase({
+    predictionRepository,
+    predictionPublicViewService
   })
   const explainPrediction = createExplainPredictionUseCase({
     predictionRepository,
@@ -184,7 +228,7 @@ export function createDependencies({ env, loggerOverride } = {}) {
     logger: loggerHandle.logger
   })
   const explainTodayPredictions = createExplainTodayPredictionsUseCase({
-    listTodayPredictions,
+    listTodayPredictions: listStoredTodayPredictions,
     explainPrediction,
     maxBatchSize: env.sports.sync.maxFixtures
   })
@@ -205,6 +249,7 @@ export function createDependencies({ env, loggerOverride } = {}) {
     useCases: {
       getHealthStatus,
       getReadinessStatus,
+      getLatestSystemRun,
       runScheduledSystemCheck,
       syncSportsData,
       runScheduledSportsSync,

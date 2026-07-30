@@ -1,6 +1,10 @@
 import { NotFoundError, ValidationError } from '../../shared/errors/AppError.js'
 
-export function createGetFixtureByIdUseCase({ fixtureRepository }) {
+export function createGetFixtureByIdUseCase({
+  fixtureRepository,
+  predictionRepository,
+  fixturePublicViewService
+}) {
   return async function getFixtureById(rawId) {
     const fixtureId = Number(rawId)
 
@@ -14,6 +18,9 @@ export function createGetFixtureByIdUseCase({ fixtureRepository }) {
       throw new NotFoundError('Fixture not found')
     }
 
-    return fixture
+    const predictions =
+      await predictionRepository.listPredictionsByFixtureId(fixtureId)
+
+    return fixturePublicViewService.toPublicFixture(fixture, predictions[0])
   }
 }

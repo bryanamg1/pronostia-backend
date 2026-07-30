@@ -151,6 +151,18 @@ export function createPredictionRepository({ poolManager }) {
       return mapPredictionRow(rows[0])
     },
 
+    async listPredictionsByFixtureId(fixtureId) {
+      const pool = poolManager.getPool()
+      const [rows] = await pool.query(
+        `${PREDICTION_SELECT}
+         WHERE p.fixture_id = ?
+         ORDER BY p.confidence_score DESC, p.id ASC`,
+        [fixtureId]
+      )
+
+      return rows.map(mapPredictionRow)
+    },
+
     async updatePredictionExplanation({ id, explanation }) {
       const pool = poolManager.getPool()
 

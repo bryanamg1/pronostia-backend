@@ -117,6 +117,7 @@ Documentacion publica: [docs/api/health-endpoints.md](./docs/api/health-endpoint
 - `GET /api/predictions/today`
 - `GET /api/predictions/top`
 - `GET /api/predictions/:id`
+- `GET /api/system/runs/latest`
 - `POST /api/admin/odds/manual`
 - `POST /api/admin/predictions/:id/explanation`
 - `POST /api/admin/predictions/explanations/today`
@@ -124,6 +125,16 @@ Documentacion publica: [docs/api/health-endpoints.md](./docs/api/health-endpoint
 Documentacion publica: [docs/api/sports-endpoints.md](./docs/api/sports-endpoints.md)
 Endpoints admin de explicaciones: [docs/api/admin-prediction-explanations.md](./docs/api/admin-prediction-explanations.md)
 Documentacion operativa de ingesta/cache: [docs/sports-ingestion.md](./docs/sports-ingestion.md)
+
+Los endpoints publicos de predicciones para dashboard y detalle exponen un DTO saneado y enriquecido con:
+
+- datos basicos del fixture y competencia;
+- version de modelo;
+- `modelProbability`, `marketProbability`, `edgePp`, `confidenceScore`, `riskLevel`, `recommendation`;
+- analisis determinista de solo lectura (`expectedGoals`, `probabilities`, `dataQuality`);
+- explicacion persistida saneada (`status`, `source`, `generatedAt`, `summary`, factores, avisos).
+
+No exponen metadata interna de OpenAI, presupuestos, usage, tokens ni request ids de proveedor.
 
 ## Migraciones
 

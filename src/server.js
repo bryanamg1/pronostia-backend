@@ -11,6 +11,7 @@ export async function startServer(options = {}) {
     logger: runtime.logger,
     getHealthStatus: runtime.useCases.getHealthStatus,
     getReadinessStatus: runtime.useCases.getReadinessStatus,
+    getLatestSystemRun: runtime.useCases.getLatestSystemRun,
     listCompetitions: runtime.useCases.listCompetitions,
     listTodayFixtures: runtime.useCases.listTodayFixtures,
     getFixtureById: runtime.useCases.getFixtureById,
