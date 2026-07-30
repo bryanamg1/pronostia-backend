@@ -1,15 +1,67 @@
 import cron from 'node-cron'
 
+import { toErrorLogPayload } from '../../shared/utils/sanitize.js'
+
 export function createScheduler({
   enabled,
   cronExpression,
   timezone,
   jobRunner,
   logger,
-  schedule = cron.schedule
+  schedule = cron.schedule,
+  distributedLockManager = null,
+  distributedLockKey = null
 }) {
   let task = null
   let started = false
+  let running = false
+
+  async function runScheduledJob() {
+    if (running) {
+      logger.warn(
+        'Scheduler skipped because a local run is already in progress'
+      )
+      return false
+    }
+
+    running = true
+    let distributedLockHandle = null
+
+    try {
+      if (distributedLockManager && distributedLockKey) {
+        distributedLockHandle = await distributedLockManager.tryAcquire({
+          key: distributedLockKey
+        })
+
+        if (!distributedLockHandle) {
+          logger.warn(
+            'Scheduler skipped because another worker already holds the lock',
+            {
+              metadata: {
+                lockKey: distributedLockKey
+              }
+            }
+          )
+          return false
+        }
+      }
+
+      await jobRunner()
+      return true
+    } catch (error) {
+      logger.error('Scheduler job failed', {
+        error: toErrorLogPayload(error),
+        lockKey: distributedLockKey
+      })
+      throw error
+    } finally {
+      if (distributedLockHandle) {
+        await distributedLockManager.release(distributedLockHandle)
+      }
+
+      running = false
+    }
+  }
 
   function start() {
     if (!enabled || started) {
@@ -18,8 +70,8 @@ export function createScheduler({
 
     task = schedule(
       cronExpression,
-      async () => {
-        await jobRunner()
+      () => {
+        void runScheduledJob()
       },
       {
         timezone
@@ -52,6 +104,7 @@ export function createScheduler({
     stop,
     isStarted() {
       return started
-    }
+    },
+    runScheduledJob
   }
 }

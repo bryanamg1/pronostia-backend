@@ -38,6 +38,7 @@ import { createSystemRunRepository } from '../infrastructure/database/repositori
 import { createSportsSyncStateRepository } from '../infrastructure/database/repositories/SportsSyncStateRepository.js'
 import { createTeamRepository } from '../infrastructure/database/repositories/TeamRepository.js'
 import { createMySqlPoolManager } from '../infrastructure/database/mysql/createMySqlPoolManager.js'
+import { createMySqlDistributedLockManager } from '../infrastructure/database/mysql/createMySqlDistributedLockManager.js'
 import { createLogger } from '../infrastructure/logging/createLogger.js'
 import { createOpenAiResponsesClient } from '../infrastructure/openai/createOpenAiResponsesClient.js'
 import { createScheduler } from '../infrastructure/scheduler/createScheduler.js'
@@ -66,6 +67,10 @@ export function createDependencies({ env, loggerOverride } = {}) {
     logger: loggerHandle.logger
   })
   const readinessProbe = new MySqlReadinessProbe(poolManager)
+  const distributedLockManager = createMySqlDistributedLockManager({
+    poolManager,
+    logger: loggerHandle.logger
+  })
   const systemRunRepository = createSystemRunRepository({ poolManager })
   const competitionRepository = createCompetitionRepository({ poolManager })
   const teamRepository = createTeamRepository({ poolManager })
@@ -225,6 +230,7 @@ export function createDependencies({ env, loggerOverride } = {}) {
     openAiUsageRepository,
     openAiClient,
     openAiConfig: env.openai,
+    distributedLockManager,
     logger: loggerHandle.logger
   })
   const explainTodayPredictions = createExplainTodayPredictionsUseCase({
@@ -238,6 +244,8 @@ export function createDependencies({ env, loggerOverride } = {}) {
     cronExpression: env.scheduler.cron,
     timezone: env.timezone,
     jobRunner: runScheduledSportsSync,
+    distributedLockManager,
+    distributedLockKey: 'scheduler:sports-ingestion',
     logger: loggerHandle.logger
   })
 

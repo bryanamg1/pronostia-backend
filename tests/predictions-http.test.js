@@ -223,6 +223,17 @@ describe('prediction endpoints', () => {
     expect(response.body.error.code).toBe('UNAUTHORIZED')
   })
 
+  test('admin routes also accept bearer authentication', async () => {
+    const { app } = createPredictionApp()
+
+    const response = await request(app)
+      .post('/api/admin/predictions/1/explanation')
+      .set('Authorization', 'Bearer test-admin-token')
+
+    expect(response.status).toBe(200)
+    expect(response.body.data.status).toBe('ready')
+  })
+
   test('admin explanation routes reject invalid tokens', async () => {
     const { app } = createPredictionApp()
 
