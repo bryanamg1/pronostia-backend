@@ -13,10 +13,20 @@ Comportamiento actual:
 - lee desde MySQL;
 - no consulta el proveedor en tiempo de request;
 - respeta el limite operativo configurado para la ventana diaria.
+- devuelve solo un DTO publico saneado por fixture:
+  - `id`
+  - `competition.{id,key,name,country,season}`
+  - `homeTeam.{id,key,name}`
+  - `awayTeam.{id,key,name}`
+  - `kickoffAt`
+  - `status`
+  - `isHistorical`
+  - `prediction.{id,market,selection,recommendation,confidenceScore}` cuando existe
+- no expone `providerId`, logos, payload crudo, metadatos privados ni informacion administrativa.
 
 ## GET /api/fixtures/:id
 
-Retorna el detalle de un fixture persistido por su id interno.
+Retorna el detalle de un fixture persistido por su id interno con el mismo DTO publico saneado usado en `/api/fixtures/today`.
 
 Si el fixture no existe, responde `404` con el contrato uniforme de error del backend.
 
@@ -28,7 +38,14 @@ Comportamiento actual:
 
 - lee solo desde MySQL;
 - no consulta el proveedor en tiempo de request;
-- devuelve scoring persistido con `modelProbability`, `marketProbability`, `edgePp`, `confidenceScore`, `riskLevel`, `recommendation` y `explanation`.
+- devuelve un DTO publico saneado con `fixture`, `model`, `selection`, `analysis`, `explanation`, `isDailyTop`, `createdAt` y `updatedAt`;
+- nunca expone metadatos internos del proveedor OpenAI, presupuesto, usage ni request ids;
+- soporta filtros publicos opcionales:
+  - `competition`
+  - `market`
+  - `recommendation`
+  - `dataQuality`
+  - `explanationSource`
 
 ## GET /api/predictions/top
 
@@ -36,9 +53,24 @@ Retorna hasta `5` predicciones destacadas, con maximo una por fixture.
 
 ## GET /api/predictions/:id
 
-Retorna el detalle completo de una prediccion persistida.
+Retorna el detalle completo de una prediccion persistida con el mismo DTO publico saneado usado por el dashboard.
 
 Si la prediccion no existe, responde `404`.
+
+Si el identificador no es un entero positivo, responde `400`.
+
+## GET /api/system/runs/latest
+
+Retorna el ultimo `system_run` publico disponible para mostrar el estado operativo del backend.
+
+Contrato actual:
+
+- `runId`
+- `runType`
+- `status`
+- `startedAt`
+- `finishedAt`
+- `errorCode`
 
 ## POST /api/admin/odds/manual
 

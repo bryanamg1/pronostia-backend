@@ -1,4 +1,21 @@
 export function createSystemRunRepository({ poolManager }) {
+  function mapSystemRunRow(row) {
+    if (!row) {
+      return null
+    }
+
+    return {
+      runId: row.run_id,
+      runType: row.run_type,
+      status: row.status,
+      startedAt: row.started_at ? new Date(row.started_at).toISOString() : null,
+      finishedAt: row.finished_at
+        ? new Date(row.finished_at).toISOString()
+        : null,
+      errorCode: row.error_code ?? null
+    }
+  }
+
   return {
     async savePreparedRun(run) {
       if (!poolManager.hasConfig()) {
@@ -59,6 +76,24 @@ export function createSystemRunRepository({ poolManager }) {
         errorCode,
         errorMessage
       }
+    },
+
+    async getLatestRun() {
+      if (!poolManager.hasConfig()) {
+        return null
+      }
+
+      const pool = poolManager.getPool()
+      const [rows] = await pool.query(
+        `
+          SELECT *
+          FROM system_runs
+          ORDER BY started_at DESC, created_at DESC, id DESC
+          LIMIT 1
+        `
+      )
+
+      return mapSystemRunRow(rows[0])
     }
   }
 }

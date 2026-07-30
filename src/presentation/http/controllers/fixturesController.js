@@ -4,7 +4,10 @@ export function createFixturesController({
 }) {
   return {
     async getTodayFixtures(request, response) {
-      const fixtures = await listTodayFixtures()
+      const fixtures = await listTodayFixtures({
+        competition: request.query.competition,
+        team: request.query.team
+      })
 
       response.status(200).json({
         success: true,
