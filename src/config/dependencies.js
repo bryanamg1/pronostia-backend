@@ -43,6 +43,20 @@ import { createOpenAiResponsesClient } from '../infrastructure/openai/createOpen
 import { createScheduler } from '../infrastructure/scheduler/createScheduler.js'
 import { createApiFootballClient } from '../infrastructure/sports/apiFootball/createApiFootballClient.js'
 
+function assertDependencyContract(name, dependency, methods) {
+  const missingMethods = methods.filter(
+    (methodName) => typeof dependency?.[methodName] !== 'function'
+  )
+
+  if (missingMethods.length > 0) {
+    throw new Error(
+      `Invalid dependency composition: ${name} must implement ${missingMethods.join(', ')}`
+    )
+  }
+
+  return dependency
+}
+
 export function createDependencies({ env, loggerOverride } = {}) {
   const loggerHandle = createLogger(env, {
     logger: loggerOverride
@@ -130,6 +144,11 @@ export function createDependencies({ env, loggerOverride } = {}) {
   const listCompetitions = createListCompetitionsUseCase({
     competitionRepository
   })
+  const fixturePublicViewService = assertDependencyContract(
+    'fixturePublicViewService',
+    createFixturePublicViewService(),
+    ['toPublicFixture']
+  )
   const importHistoricalSeason = createImportHistoricalSeasonUseCase({
     logger: loggerHandle.logger,
     env,
@@ -184,7 +203,6 @@ export function createDependencies({ env, loggerOverride } = {}) {
   const listStoredTopPredictions = createListTopPredictionsUseCase({
     listTodayPredictions: listStoredTodayPredictions
   })
-  const fixturePublicViewService = createFixturePublicViewService()
   const predictionPublicViewService = createPredictionPublicViewService({
     fixtureRepository,
     modelConfig: predictionModelConfig
