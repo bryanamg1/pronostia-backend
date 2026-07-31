@@ -1,3 +1,5 @@
+import { assertAuthorizedCompetitionKey } from '../../domain/sports/competitionCatalog.js'
+
 function matchesFilters(prediction, filters) {
   if (
     filters.competition &&
@@ -39,6 +41,10 @@ export function createListPublicTodayPredictionsUseCase({
   predictionPublicViewService
 }) {
   return async function listTodayPredictions({ filters = {} } = {}) {
+    if (filters.competition) {
+      assertAuthorizedCompetitionKey(filters.competition)
+    }
+
     const predictions = await listStoredTodayPredictions()
     const publicPredictions =
       await predictionPublicViewService.toPublicPredictions(predictions)

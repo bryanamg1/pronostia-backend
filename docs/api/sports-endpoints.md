@@ -4,6 +4,29 @@
 
 Retorna las competiciones habilitadas ya persistidas localmente.
 
+Comportamiento actual:
+
+- expone un catalogo publico consolidado de `18` competiciones autorizadas;
+- no duplica una categoria por temporada: la temporada se devuelve como metadata de la competicion consolidada;
+- soporta filtros publicos opcionales:
+  - `type`
+  - `country`
+  - `region`
+  - `availabilityStatus`
+- devuelve un DTO saneado por competicion:
+  - `id`
+  - `key`
+  - `targetKey`
+  - `name`
+  - `country`
+  - `region`
+  - `type`
+  - `availabilityStatus`
+  - `season`
+  - `isEnabled`
+  - `displayOrder`
+- no expone `providerId`, payloads crudos ni metadata administrativa del proveedor.
+
 ## GET /api/fixtures/today
 
 Retorna los fixtures almacenados dentro de la ventana activa de Fase 2.
@@ -12,6 +35,7 @@ Comportamiento actual:
 
 - lee desde MySQL;
 - no consulta el proveedor en tiempo de request;
+- acepta el filtro publico opcional `competition` para cualquiera de las `18` keys autorizadas;
 - respeta el limite operativo configurado para la ventana diaria.
 - devuelve solo un DTO publico saneado por fixture:
   - `id`

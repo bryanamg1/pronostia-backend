@@ -1,3 +1,4 @@
+import { ValidationError } from '../src/shared/errors/AppError.js'
 import { createListTodayFixturesUseCase } from '../src/application/sports/listTodayFixtures.js'
 import { createFixturePublicViewService } from '../src/application/sports/services/fixturePublicView.js'
 
@@ -184,7 +185,7 @@ describe('listTodayFixtures use case', () => {
         competition: 'unknown',
         team: '999'
       })
-    ).resolves.toEqual([])
+    ).rejects.toBeInstanceOf(ValidationError)
     await expect(
       listTodayFixtures({
         competition: 'premier-league',

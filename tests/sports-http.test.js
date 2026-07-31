@@ -35,13 +35,17 @@ describe('sports endpoints', () => {
       }),
       listCompetitions: async () => [
         {
-          id: 1,
+          id: null,
+          key: 'laliga',
           targetKey: 'laliga',
-          providerId: 140,
-          name: 'La Liga',
+          name: 'LaLiga',
           country: 'Spain',
+          region: null,
+          type: 'DOMESTIC_LEAGUE',
+          availabilityStatus: 'PARTIAL',
           season: 2026,
-          enabled: true
+          isEnabled: true,
+          displayOrder: 0
         }
       ]
     })
@@ -51,6 +55,9 @@ describe('sports endpoints', () => {
     expect(response.status).toBe(200)
     expect(response.body.success).toBe(true)
     expect(response.body.data).toHaveLength(1)
+    expect(response.body.data[0].providerId).toBeUndefined()
+    expect(response.body.data[0].coverage).toBeUndefined()
+    expect(response.body.data[0].key).toBe('laliga')
     expect(response.body.data[0].targetKey).toBe('laliga')
   })
 

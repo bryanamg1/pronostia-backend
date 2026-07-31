@@ -1,3 +1,5 @@
+import { assertAuthorizedCompetitionKey } from '../../domain/sports/competitionCatalog.js'
+
 export function createListTodayFixturesUseCase({
   fixtureRepository,
   predictionRepository,
@@ -7,13 +9,19 @@ export function createListTodayFixturesUseCase({
   maxFixtures
 }) {
   function normalizeFilters(filters = {}) {
-    return {
+    const normalized = {
       competition:
         typeof filters.competition === 'string'
           ? filters.competition.trim()
           : '',
       team: typeof filters.team === 'string' ? filters.team.trim() : ''
     }
+
+    if (normalized.competition) {
+      assertAuthorizedCompetitionKey(normalized.competition)
+    }
+
+    return normalized
   }
 
   function buildPredictionMap(predictions) {
