@@ -1,3 +1,5 @@
+import { jest } from '@jest/globals'
+
 import { createExplainPredictionUseCase } from '../src/application/prediction/explainPrediction.js'
 import { createExplainTodayPredictionsUseCase } from '../src/application/prediction/explainTodayPredictions.js'
 import {
@@ -298,6 +300,162 @@ describe('phase 5 explanation services', () => {
     expect(result.prediction.explanation.source).toBe('OPENAI')
     expect(usageRecords).toHaveLength(1)
     expect(usageRecords[0].estimatedCostUsd).toBeGreaterThan(0)
+  })
+
+  test('same prediction cannot be explained concurrently even when force differs', async () => {
+    const prediction = createExplainablePrediction()
+    let resolveOpenAiResponse
+    const openAiClient = {
+      generateStructuredOutput: jest.fn(
+        ({ payload }) =>
+          new Promise((resolve) => {
+            resolveOpenAiResponse = () =>
+              resolve({
+                id: 'resp_locked',
+                model: 'gpt-5-mini',
+                output: {
+                  summary: payload.summaryCandidates[0],
+                  supportingFactors: payload.supportingCandidates.slice(0, 1),
+                  counterFactors: payload.counterCandidates.slice(0, 1),
+                  warnings: payload.warningCandidates.slice(0, 1),
+                  responsibleUseNotice: payload.responsibleUseNotice
+                },
+                usage: {
+                  inputTokens: 400,
+                  cachedInputTokens: 0,
+                  outputTokens: 100,
+                  reasoningTokens: 0
+                }
+              })
+          })
+      )
+    }
+    const useCase = createExplainPredictionUseCase({
+      predictionRepository: {
+        async findPredictionById() {
+          return prediction
+        },
+        async updatePredictionExplanation({ explanation }) {
+          prediction.explanation = explanation
+          return prediction
+        }
+      },
+      generateHistoricalPrediction: async () => createModelResult(),
+      openAiUsageRepository: {
+        async getUsageSummaryByPeriod() {
+          return {
+            totalCostUsd: 0
+          }
+        },
+        async createUsageRecord(payload) {
+          return payload
+        }
+      },
+      openAiClient,
+      openAiConfig: {
+        configured: true,
+        model: 'gpt-5-mini',
+        budget: {
+          monthlyUsd: 20,
+          alertPercent: 70,
+          degradedPercent: 85,
+          hardLimitPercent: 100
+        },
+        pricing: {
+          inputUsdPer1MTokens: 0.25,
+          cachedInputUsdPer1MTokens: 0.025,
+          outputUsdPer1MTokens: 2
+        }
+      },
+      logger: createTestLogger().logger,
+      now: () => new Date('2026-07-29T15:00:00.000Z')
+    })
+
+    const firstRun = useCase({
+      predictionId: 1
+    })
+
+    await new Promise((resolve) => setImmediate(resolve))
+
+    const secondRun = await useCase({
+      predictionId: 1,
+      force: true
+    })
+
+    expect(secondRun.status).toBe('already_processing')
+    expect(openAiClient.generateStructuredOutput).toHaveBeenCalledTimes(1)
+
+    resolveOpenAiResponse()
+
+    await expect(firstRun).resolves.toEqual(
+      expect.objectContaining({
+        status: 'ready'
+      })
+    )
+  })
+
+  test('distributed lock skips OpenAI work when another worker already owns the prediction lock', async () => {
+    const prediction = createExplainablePrediction()
+    const openAiClient = {
+      generateStructuredOutput: jest.fn(async () => {
+        throw new Error('should not be called')
+      })
+    }
+    const useCase = createExplainPredictionUseCase({
+      predictionRepository: {
+        async findPredictionById() {
+          return prediction
+        },
+        async updatePredictionExplanation({ explanation }) {
+          prediction.explanation = explanation
+          return prediction
+        }
+      },
+      generateHistoricalPrediction: async () => createModelResult(),
+      openAiUsageRepository: {
+        async getUsageSummaryByPeriod() {
+          return {
+            totalCostUsd: 0
+          }
+        },
+        async createUsageRecord(payload) {
+          return payload
+        }
+      },
+      openAiClient,
+      openAiConfig: {
+        configured: true,
+        model: 'gpt-5-mini',
+        budget: {
+          monthlyUsd: 20,
+          alertPercent: 70,
+          degradedPercent: 85,
+          hardLimitPercent: 100
+        },
+        pricing: {
+          inputUsdPer1MTokens: 0.25,
+          cachedInputUsdPer1MTokens: 0.025,
+          outputUsdPer1MTokens: 2
+        }
+      },
+      distributedLockManager: {
+        async tryAcquire() {
+          return null
+        },
+        async release() {
+          return false
+        }
+      },
+      logger: createTestLogger().logger,
+      now: () => new Date('2026-07-29T15:00:00.000Z')
+    })
+
+    const result = await useCase({
+      predictionId: 1
+    })
+
+    expect(result.status).toBe('already_processing')
+    expect(openAiClient.generateStructuredOutput).not.toHaveBeenCalled()
   })
 
   test('explanation falls back when budget is blocked', async () => {

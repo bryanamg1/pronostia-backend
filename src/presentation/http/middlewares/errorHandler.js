@@ -1,4 +1,25 @@
 import { AppError } from '../../../shared/errors/AppError.js'
+import { toErrorLogPayload } from '../../../shared/utils/sanitize.js'
+
+function buildErrorLogPayload({ error, knownError, payloadTooLarge }) {
+  if (knownError) {
+    return toErrorLogPayload(error)
+  }
+
+  if (payloadTooLarge) {
+    return {
+      name: error?.name,
+      code: 'PAYLOAD_TOO_LARGE',
+      message: 'Payload too large'
+    }
+  }
+
+  return {
+    name: error?.name,
+    code: error?.code ?? 'INTERNAL_ERROR',
+    message: 'Internal server error'
+  }
+}
 
 export function createErrorHandler({ environment, logger }) {
   return function errorHandler(error, request, response, next) {
@@ -12,7 +33,13 @@ export function createErrorHandler({ environment, logger }) {
 
     logger.error('HTTP request failed', {
       requestId,
-      error
+      method: request.method,
+      path: request.originalUrl ?? request.url,
+      error: buildErrorLogPayload({
+        error,
+        knownError,
+        payloadTooLarge
+      })
     })
 
     const statusCode = knownError

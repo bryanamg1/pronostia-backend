@@ -45,6 +45,7 @@ export function createExplainPredictionUseCase({
   openAiUsageRepository,
   openAiClient,
   openAiConfig,
+  distributedLockManager,
   logger,
   now = () => new Date()
 }) {
@@ -146,17 +147,43 @@ export function createExplainPredictionUseCase({
     degradedOpenAiLimit = 5
   }) {
     const logicalRequestKey = `prediction:${predictionId}:explain:${force ? 'force' : 'default'}`
+    const concurrencyKey = `prediction:${predictionId}:explain`
 
-    if (activeRequests.has(logicalRequestKey)) {
+    if (activeRequests.has(concurrencyKey)) {
       return {
         status: 'already_processing',
         prediction: await predictionRepository.findPredictionById(predictionId)
       }
     }
 
-    activeRequests.add(logicalRequestKey)
+    activeRequests.add(concurrencyKey)
+    let distributedLockHandle = null
 
     try {
+      if (distributedLockManager?.tryAcquire) {
+        distributedLockHandle = await distributedLockManager.tryAcquire({
+          key: concurrencyKey
+        })
+
+        if (!distributedLockHandle) {
+          logger?.warn?.(
+            'Prediction explanation skipped because another worker already holds the lock',
+            {
+              metadata: {
+                predictionId,
+                logicalRequestKey
+              }
+            }
+          )
+
+          return {
+            status: 'already_processing',
+            prediction:
+              await predictionRepository.findPredictionById(predictionId)
+          }
+        }
+      }
+
       const prediction =
         await predictionRepository.findPredictionById(predictionId)
 
@@ -399,7 +426,11 @@ export function createExplainPredictionUseCase({
         }
       }
     } finally {
-      activeRequests.delete(logicalRequestKey)
+      if (distributedLockHandle) {
+        await distributedLockManager.release(distributedLockHandle)
+      }
+
+      activeRequests.delete(concurrencyKey)
     }
   }
 }
