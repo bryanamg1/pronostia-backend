@@ -45,7 +45,11 @@ describe('sports endpoints', () => {
           availabilityStatus: 'PARTIAL',
           season: 2026,
           isEnabled: true,
-          displayOrder: 0
+          displayOrder: 0,
+          fixtureCount: 1,
+          predictionCount: 1,
+          historicalFixtureCount: 0,
+          hasHistoricalDataOnly: false
         }
       ]
     })
@@ -59,6 +63,8 @@ describe('sports endpoints', () => {
     expect(response.body.data[0].coverage).toBeUndefined()
     expect(response.body.data[0].key).toBe('laliga')
     expect(response.body.data[0].targetKey).toBe('laliga')
+    expect(response.body.data[0].fixtureCount).toBe(1)
+    expect(response.body.data[0].predictionCount).toBe(1)
   })
 
   test('/api/fixtures/today and /api/fixtures/:id expose fixture data and 404s', async () => {

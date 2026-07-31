@@ -147,7 +147,11 @@ export function createDependencies({ env, loggerOverride } = {}) {
     generateRunId: randomUUID
   })
   const listCompetitions = createListCompetitionsUseCase({
-    competitionRepository
+    competitionRepository,
+    fixtureRepository,
+    predictionRepository,
+    lookaheadHours: env.sports.sync.lookaheadHours,
+    maxFixtures: env.sports.sync.maxFixtures
   })
   const fixturePublicViewService = assertDependencyContract(
     'fixturePublicViewService',

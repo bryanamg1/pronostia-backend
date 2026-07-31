@@ -44,7 +44,44 @@ describe('listCompetitions use case', () => {
             }
           ]
         }
-      }
+      },
+      fixtureRepository: {
+        async listFixturesByWindow() {
+          return [
+            {
+              id: 501,
+              kickoffAt: '2026-07-31T18:00:00.000Z',
+              status: 'NS',
+              competition: {
+                targetKey: 'laliga'
+              }
+            },
+            {
+              id: 502,
+              kickoffAt: '2026-07-31T20:00:00.000Z',
+              status: 'FT',
+              competition: {
+                targetKey: 'copa-del-rey'
+              }
+            }
+          ]
+        }
+      },
+      predictionRepository: {
+        async listPredictionsByWindow() {
+          return [
+            {
+              id: 901,
+              fixture: {
+                competition: {
+                  targetKey: 'laliga'
+                }
+              }
+            }
+          ]
+        }
+      },
+      now: () => new Date('2026-07-31T12:00:00.000Z')
     })
 
     const competitions = await listCompetitions()
@@ -63,7 +100,11 @@ describe('listCompetitions use case', () => {
           availabilityStatus: 'PARTIAL',
           season: 2026,
           isEnabled: true,
-          displayOrder: 0
+          displayOrder: 0,
+          fixtureCount: 1,
+          predictionCount: 1,
+          historicalFixtureCount: 0,
+          hasHistoricalDataOnly: false
         }),
         expect.objectContaining({
           id: 11,
@@ -76,7 +117,11 @@ describe('listCompetitions use case', () => {
           availabilityStatus: 'PARTIAL',
           season: 2026,
           isEnabled: true,
-          displayOrder: 1
+          displayOrder: 1,
+          fixtureCount: 0,
+          predictionCount: 0,
+          historicalFixtureCount: 0,
+          hasHistoricalDataOnly: false
         }),
         expect.objectContaining({
           id: null,
@@ -89,7 +134,11 @@ describe('listCompetitions use case', () => {
           availabilityStatus: 'PARTIAL',
           season: 2025,
           isEnabled: true,
-          displayOrder: 7
+          displayOrder: 7,
+          fixtureCount: 1,
+          predictionCount: 0,
+          historicalFixtureCount: 1,
+          hasHistoricalDataOnly: true
         })
       ])
     )
@@ -129,7 +178,8 @@ describe('listCompetitions use case', () => {
             }
           ]
         }
-      }
+      },
+      now: () => new Date('2026-07-31T12:00:00.000Z')
     })
 
     const competitions = await listCompetitions()
@@ -156,7 +206,8 @@ describe('listCompetitions use case', () => {
         async listEnabledCompetitions() {
           return []
         }
-      }
+      },
+      now: () => new Date('2026-07-31T12:00:00.000Z')
     })
 
     await expect(
@@ -192,7 +243,8 @@ describe('listCompetitions use case', () => {
         async listEnabledCompetitions() {
           return []
         }
-      }
+      },
+      now: () => new Date('2026-07-31T12:00:00.000Z')
     })
 
     await expect(
