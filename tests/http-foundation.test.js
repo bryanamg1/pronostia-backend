@@ -116,6 +116,18 @@ describe('http foundation', () => {
     expect(JSON.stringify(response.body)).not.toContain('secret')
   })
 
+  test('unexpected error logs are sanitized before reaching the logger', async () => {
+    const { app, entries } = createTestApp()
+
+    await request(app).get('/api/test/unexpected-error')
+
+    const errorEntry = entries.find((entry) => entry.level === 'error')
+
+    expect(errorEntry).toBeDefined()
+    expect(errorEntry.metadata.error.message).toBe('Internal server error')
+    expect(JSON.stringify(errorEntry)).not.toContain('sensitive-value')
+  })
+
   test('http logs are sanitized', async () => {
     const { app, entries } = createTestApp()
 

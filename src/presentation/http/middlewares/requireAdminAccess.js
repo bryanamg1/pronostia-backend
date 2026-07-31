@@ -1,3 +1,5 @@
+import { createHash, timingSafeEqual } from 'node:crypto'
+
 import { AppError } from '../../../shared/errors/AppError.js'
 
 function readTokenFromRequest(request) {
@@ -17,6 +19,18 @@ function readTokenFromRequest(request) {
   }
 
   return ''
+}
+
+function hashToken(token) {
+  return createHash('sha256').update(token).digest()
+}
+
+function tokensMatch(left, right) {
+  if (typeof left !== 'string' || typeof right !== 'string') {
+    return false
+  }
+
+  return timingSafeEqual(hashToken(left), hashToken(right))
 }
 
 export function createRequireAdminAccess({ tokenConfigured, token }) {
@@ -47,7 +61,7 @@ export function createRequireAdminAccess({ tokenConfigured, token }) {
       return
     }
 
-    if (requestToken !== token) {
+    if (!tokensMatch(requestToken, token)) {
       next(
         new AppError({
           code: 'FORBIDDEN',

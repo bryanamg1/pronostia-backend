@@ -7,6 +7,7 @@ const createFixturePublicViewServiceMock = jest.fn()
 const createListTodayFixturesUseCaseMock = jest.fn()
 const createGetFixtureByIdUseCaseMock = jest.fn()
 const createMySqlPoolManagerMock = jest.fn()
+const createMySqlDistributedLockManagerMock = jest.fn()
 const createSchedulerMock = jest.fn()
 const createApiFootballClientMock = jest.fn()
 const createOpenAiResponsesClientMock = jest.fn()
@@ -30,6 +31,12 @@ jest.unstable_mockModule(
   '../src/infrastructure/database/mysql/createMySqlPoolManager.js',
   () => ({
     createMySqlPoolManager: createMySqlPoolManagerMock
+  })
+)
+jest.unstable_mockModule(
+  '../src/infrastructure/database/mysql/createMySqlDistributedLockManager.js',
+  () => ({
+    createMySqlDistributedLockManager: createMySqlDistributedLockManagerMock
   })
 )
 jest.unstable_mockModule(
@@ -86,6 +93,10 @@ describe('real dependency bootstrap composition', () => {
       stop: jest.fn(),
       isStarted: jest.fn(() => false)
     }
+    const distributedLockManager = {
+      tryAcquire: jest.fn(),
+      release: jest.fn()
+    }
     const poolManager = {
       hasConfig: jest.fn(() => false),
       getPool: jest.fn(() => {
@@ -107,6 +118,9 @@ describe('real dependency bootstrap composition', () => {
     createListTodayFixturesUseCaseMock.mockReturnValue(listTodayFixturesUseCase)
     createGetFixtureByIdUseCaseMock.mockReturnValue(getFixtureByIdUseCase)
     createMySqlPoolManagerMock.mockReturnValue(poolManager)
+    createMySqlDistributedLockManagerMock.mockReturnValue(
+      distributedLockManager
+    )
     createSchedulerMock.mockReturnValue(scheduler)
 
     const dependencies = createDependencies({
@@ -147,6 +161,12 @@ describe('real dependency bootstrap composition', () => {
     expect(dependencies.scheduler).toBe(scheduler)
     expect(dependencies.scheduler.isStarted()).toBe(false)
     expect(scheduler.start).not.toHaveBeenCalled()
+    expect(createMySqlDistributedLockManagerMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        poolManager,
+        logger: expect.any(Object)
+      })
+    )
     expect(createApiFootballClientMock).not.toHaveBeenCalled()
     expect(createOpenAiResponsesClientMock).not.toHaveBeenCalled()
     expect(poolManager.getPool).not.toHaveBeenCalled()
@@ -170,6 +190,10 @@ describe('real dependency bootstrap composition', () => {
       getPool: jest.fn(),
       ping: jest.fn(),
       close: jest.fn(async () => false)
+    })
+    createMySqlDistributedLockManagerMock.mockReturnValue({
+      tryAcquire: jest.fn(),
+      release: jest.fn()
     })
     createSchedulerMock.mockReturnValue({
       start: jest.fn(),

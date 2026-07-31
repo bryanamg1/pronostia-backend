@@ -1,3 +1,5 @@
+import { jest } from '@jest/globals'
+
 import { createScheduler } from '../src/infrastructure/scheduler/createScheduler.js'
 import { createRunScheduledSportsSyncUseCase } from '../src/application/sports/runScheduledSportsSync.js'
 import { createRunScheduledSystemCheckUseCase } from '../src/application/system/runScheduledSystemCheck.js'
@@ -47,6 +49,71 @@ describe('scheduler', () => {
     expect(scheduler.start()).toBe(true)
     expect(scheduler.start()).toBe(false)
     expect(scheduled).toHaveLength(1)
+  })
+
+  test('scheduler skips execution when another worker already holds the lock', async () => {
+    const { logger, entries } = createTestLogger()
+    const jobRunner = jest.fn(async () => {})
+    const scheduler = createScheduler({
+      enabled: true,
+      cronExpression: '0 6 * * *',
+      timezone: 'America/Argentina/Buenos_Aires',
+      jobRunner,
+      logger,
+      distributedLockManager: {
+        async tryAcquire() {
+          return null
+        },
+        async release() {
+          return false
+        }
+      },
+      distributedLockKey: 'scheduler:sports-ingestion',
+      schedule: () => ({
+        stop() {},
+        destroy() {}
+      })
+    })
+
+    await scheduler.runScheduledJob()
+
+    expect(jobRunner).not.toHaveBeenCalled()
+    expect(
+      entries.some((entry) =>
+        entry.message.includes('another worker already holds the lock')
+      )
+    ).toBe(true)
+  })
+
+  test('scheduler releases the distributed lock after a successful run', async () => {
+    const { logger } = createTestLogger()
+    const release = jest.fn(async () => true)
+    const scheduler = createScheduler({
+      enabled: true,
+      cronExpression: '0 6 * * *',
+      timezone: 'America/Argentina/Buenos_Aires',
+      jobRunner: async () => {},
+      logger,
+      distributedLockManager: {
+        async tryAcquire() {
+          return {
+            key: 'scheduler:sports-ingestion'
+          }
+        },
+        release
+      },
+      distributedLockKey: 'scheduler:sports-ingestion',
+      schedule: () => ({
+        stop() {},
+        destroy() {}
+      })
+    })
+
+    await scheduler.runScheduledJob()
+
+    expect(release).toHaveBeenCalledWith({
+      key: 'scheduler:sports-ingestion'
+    })
   })
 
   test('scheduler foundation job avoids sports APIs and only logs readiness', async () => {
