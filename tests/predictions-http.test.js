@@ -196,11 +196,11 @@ describe('prediction endpoints', () => {
     const { app } = createPredictionApp()
 
     const response = await request(app).get(
-      '/api/predictions/today?competition=serie-a'
+      '/api/predictions/today?competition=fa-cup'
     )
 
     expect(response.status).toBe(200)
-    expect(response.body.data).toEqual([])
+    expect(response.body.data).toHaveLength(1)
   })
 
   test('prediction detail validates a positive integer id', async () => {

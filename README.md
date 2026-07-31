@@ -126,6 +126,26 @@ Documentacion publica: [docs/api/sports-endpoints.md](./docs/api/sports-endpoint
 Endpoints admin de explicaciones: [docs/api/admin-prediction-explanations.md](./docs/api/admin-prediction-explanations.md)
 Documentacion operativa de ingesta/cache: [docs/sports-ingestion.md](./docs/sports-ingestion.md)
 
+## Catalogo publico de competiciones
+
+PronostIA expone un catalogo publico saneado de `18` competiciones autorizadas:
+
+- `7` ligas nacionales;
+- `7` copas nacionales;
+- `4` competiciones internacionales.
+
+Las siete copas nacionales autorizadas son:
+
+- `copa-del-rey`
+- `fa-cup`
+- `coupe-de-france`
+- `coppa-italia`
+- `dfb-pokal`
+- `copa-argentina`
+- `copa-do-brasil`
+
+La disponibilidad visible depende de la evidencia persistida y del plan del proveedor. Una competicion puede mostrarse aunque la ventana diaria no tenga fixtures actuales, siempre que su identidad publica sea estable y `availabilityStatus` refleje el estado observado (`VERIFIED`, `PARTIAL`, `PLAN_RESTRICTED`, `NOT_AVAILABLE`, `INCONCLUSIVE`).
+
 Los endpoints publicos de predicciones para dashboard y detalle exponen un DTO saneado y enriquecido con:
 
 - datos basicos del fixture y competencia;
