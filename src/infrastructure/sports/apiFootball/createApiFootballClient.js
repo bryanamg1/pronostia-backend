@@ -286,6 +286,7 @@ export function createApiFootballClient({
       toDate,
       timezone,
       leagueId,
+      season,
       page = 1
     }) {
       return apiGet(
@@ -294,8 +295,8 @@ export function createApiFootballClient({
           date: fromDate,
           timezone,
           league: leagueId,
-          page,
-          ...(toDate ? { to: toDate } : {})
+          season,
+          page
         },
         {
           step: `odds:${leagueId ?? 'global'}:${fromDate}:${page}`

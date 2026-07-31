@@ -115,6 +115,42 @@ describe('api-football client', () => {
     expect(requestedUrl).not.toContain('to=')
   })
 
+  test('builds odds requests without the invalid to parameter and forwards season', async () => {
+    const { logger } = createTestLogger()
+    const fetchImpl = jest.fn(async () => {
+      return new Response(JSON.stringify({ response: [] }), {
+        status: 200
+      })
+    })
+
+    const client = createApiFootballClient({
+      baseUrl: 'https://example.test',
+      apiKey: 'secret-token',
+      minIntervalMs: 7000,
+      retryAfterFallbackMs: 65000,
+      softLimitPercent: 80,
+      logger,
+      fetchImpl,
+      nowMs: () => 0,
+      sleep: async () => {}
+    })
+
+    await client.getOddsByDateRange({
+      fromDate: '2026-08-01',
+      toDate: '2026-08-02',
+      timezone: 'America/Argentina/Buenos_Aires',
+      leagueId: 128,
+      season: 2026,
+      page: 1
+    })
+
+    const requestedUrl = fetchImpl.mock.calls[0][0].toString()
+    expect(requestedUrl).toContain('date=2026-08-01')
+    expect(requestedUrl).toContain('league=128')
+    expect(requestedUrl).toContain('season=2026')
+    expect(requestedUrl).not.toContain('to=')
+  })
+
   test('retries HTTP 429 with retry-after before failing', async () => {
     const { logger } = createTestLogger()
     let currentMs = 0
