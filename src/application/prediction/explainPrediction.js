@@ -191,13 +191,6 @@ export function createExplainPredictionUseCase({
         throw new NotFoundError('Prediction not found')
       }
 
-      if (prediction.recommendation !== 'CONSIDER') {
-        return {
-          status: 'not_applicable',
-          prediction
-        }
-      }
-
       if (
         !force &&
         [EXPLANATION_STATUSES.READY, EXPLANATION_STATUSES.FALLBACK].includes(

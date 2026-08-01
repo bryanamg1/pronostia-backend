@@ -65,8 +65,10 @@ export function createGenerateScoredPredictionsUseCase({
           decimalOdds: marketSelection.decimalOdds,
           bookmaker: marketGroup.bookmaker,
           sourceType: marketGroup.sourceType,
-          capturedAt: marketSelection.capturedAt,
+          capturedAt: marketGroup.capturedAt,
           overround: marketGroup.overround,
+          normalizationMethod: marketGroup.normalizationMethod,
+          derivedFromMarket: marketGroup.derivedFromMarket,
           marketCompleteness: marketGroup.completeness,
           now: now()
         })

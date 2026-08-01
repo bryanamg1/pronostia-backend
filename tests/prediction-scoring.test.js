@@ -139,4 +139,128 @@ describe('prediction scoring', () => {
     expect(stale.recommendation).toBe('NO_RECOMMENDATION')
     expect(stale.riskLevel).toBe('HIGH')
   })
+
+  test('derives double chance fair probability from match result instead of normalizing 1X, X2 and 12 together', () => {
+    const groups = selectPreferredMarketOdds([
+      {
+        fixtureId: 764,
+        bookmaker: 'Bet365',
+        market: 'MATCH_RESULT',
+        selection: 'HOME',
+        decimalOdds: 2.7,
+        sourceType: 'API',
+        capturedAt: '2026-07-31T23:04:16.000Z'
+      },
+      {
+        fixtureId: 764,
+        bookmaker: 'Bet365',
+        market: 'MATCH_RESULT',
+        selection: 'DRAW',
+        decimalOdds: 2.8,
+        sourceType: 'API',
+        capturedAt: '2026-07-31T23:04:16.000Z'
+      },
+      {
+        fixtureId: 764,
+        bookmaker: 'Bet365',
+        market: 'MATCH_RESULT',
+        selection: 'AWAY',
+        decimalOdds: 2.8,
+        sourceType: 'API',
+        capturedAt: '2026-07-31T23:04:16.000Z'
+      },
+      {
+        fixtureId: 764,
+        bookmaker: 'Bet365',
+        market: 'DOUBLE_CHANCE',
+        selection: 'HOME_OR_DRAW',
+        decimalOdds: 1.4,
+        sourceType: 'API',
+        capturedAt: '2026-07-31T23:04:16.000Z'
+      },
+      {
+        fixtureId: 764,
+        bookmaker: 'Bet365',
+        market: 'DOUBLE_CHANCE',
+        selection: 'DRAW_OR_AWAY',
+        decimalOdds: 1.44,
+        sourceType: 'API',
+        capturedAt: '2026-07-31T23:04:16.000Z'
+      },
+      {
+        fixtureId: 764,
+        bookmaker: 'Bet365',
+        market: 'DOUBLE_CHANCE',
+        selection: 'HOME_OR_AWAY',
+        decimalOdds: 1.4,
+        sourceType: 'API',
+        capturedAt: '2026-07-31T23:04:16.000Z'
+      }
+    ])
+
+    const doubleChanceGroup = groups.find(
+      (group) => group.market === 'DOUBLE_CHANCE'
+    )
+
+    expect(doubleChanceGroup.normalizationMethod).toBe(
+      'DERIVED_FROM_MATCH_RESULT'
+    )
+    expect(doubleChanceGroup.derivedFromMarket).toBe('MATCH_RESULT')
+    expect(doubleChanceGroup.normalizedProbabilities.HOME_OR_DRAW).toBeCloseTo(
+      0.6707317073,
+      8
+    )
+    expect(doubleChanceGroup.normalizedProbabilities.DRAW_OR_AWAY).toBeCloseTo(
+      0.6585365854,
+      8
+    )
+    expect(doubleChanceGroup.normalizedProbabilities.HOME_OR_AWAY).toBeCloseTo(
+      0.6707317073,
+      8
+    )
+    expect(
+      doubleChanceGroup.normalizedProbabilities.HOME_OR_DRAW
+    ).not.toBeCloseTo(0.3364485981, 8)
+  })
+
+  test('falls back to raw implied probability for double chance when match result is unavailable', () => {
+    const groups = selectPreferredMarketOdds([
+      {
+        fixtureId: 1,
+        bookmaker: 'Bet365',
+        market: 'DOUBLE_CHANCE',
+        selection: 'HOME_OR_DRAW',
+        decimalOdds: 1.4,
+        sourceType: 'API',
+        capturedAt: '2026-07-31T23:04:16.000Z'
+      },
+      {
+        fixtureId: 1,
+        bookmaker: 'Bet365',
+        market: 'DOUBLE_CHANCE',
+        selection: 'DRAW_OR_AWAY',
+        decimalOdds: 1.44,
+        sourceType: 'API',
+        capturedAt: '2026-07-31T23:04:16.000Z'
+      },
+      {
+        fixtureId: 1,
+        bookmaker: 'Bet365',
+        market: 'DOUBLE_CHANCE',
+        selection: 'HOME_OR_AWAY',
+        decimalOdds: 1.4,
+        sourceType: 'API',
+        capturedAt: '2026-07-31T23:04:16.000Z'
+      }
+    ])
+
+    const doubleChanceGroup = groups[0]
+
+    expect(doubleChanceGroup.normalizationMethod).toBe('RAW_IMPLIED')
+    expect(doubleChanceGroup.normalizedProbabilities.HOME_OR_DRAW).toBeCloseTo(
+      1 / 1.4,
+      8
+    )
+    expect(doubleChanceGroup.overround).toBeNull()
+  })
 })

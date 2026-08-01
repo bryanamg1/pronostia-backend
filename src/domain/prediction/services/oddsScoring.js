@@ -20,6 +20,20 @@ function getRequiredSelections(market) {
   return MARKET_SELECTIONS[market] ?? []
 }
 
+function getRawImpliedProbability(decimalOdds) {
+  return safeDivide(1, decimalOdds, 0)
+}
+
+function allSelectionsShareSnapshot(selections) {
+  if (selections.length <= 1) {
+    return true
+  }
+
+  const reference = selections[0]?.capturedAt ?? null
+
+  return selections.every((selection) => selection.capturedAt === reference)
+}
+
 export function mapModelProbabilityByMarket(probabilities, market, selection) {
   switch (market) {
     case 'MATCH_RESULT':
@@ -57,7 +71,7 @@ export function mapModelProbabilityByMarket(probabilities, market, selection) {
   }
 }
 
-function buildOddsGroup(rows) {
+function buildExclusiveOddsGroup(rows) {
   const sortedRows = [...rows].sort(sortByCapturedAtDescending)
   const latestBySelection = new Map()
 
@@ -78,21 +92,26 @@ function buildOddsGroup(rows) {
     0
   )
 
-  if (selections.length !== requiredSelections.length) {
+  if (
+    selections.length !== requiredSelections.length ||
+    !allSelectionsShareSnapshot(selections)
+  ) {
     return {
       market: sampleRow.market,
       bookmaker: sampleRow.bookmaker,
       sourceType: sampleRow.sourceType,
-      capturedAt: sampleRow.capturedAt,
+      capturedAt: null,
       completeness,
       selections: [],
       normalizedProbabilities: null,
-      overround: null
+      overround: null,
+      normalizationMethod: null,
+      derivedFromMarket: null
     }
   }
 
   const impliedProbabilities = selections.map((selection) =>
-    safeDivide(1, selection.decimalOdds, 0)
+    getRawImpliedProbability(selection.decimalOdds)
   )
   const overround = impliedProbabilities.reduce(
     (total, value) => total + value,
@@ -114,14 +133,154 @@ function buildOddsGroup(rows) {
     market: sampleRow.market,
     bookmaker: sampleRow.bookmaker,
     sourceType: sampleRow.sourceType,
-    capturedAt: selections
-      .map((selection) => selection.capturedAt)
-      .sort()
-      .at(-1),
+    capturedAt: selections[0].capturedAt,
     completeness,
     selections,
     normalizedProbabilities,
-    overround
+    overround,
+    normalizationMethod: 'DEVIG_EXCLUSIVE',
+    derivedFromMarket: sampleRow.market
+  }
+}
+
+function buildDoubleChanceOddsGroup(rows) {
+  const sortedRows = [...rows].sort(sortByCapturedAtDescending)
+  const latestBySelection = new Map()
+
+  for (const row of sortedRows) {
+    if (!latestBySelection.has(row.selection)) {
+      latestBySelection.set(row.selection, row)
+    }
+  }
+
+  const sampleRow = sortedRows[0]
+  const requiredSelections = getRequiredSelections(sampleRow.market)
+  const selections = requiredSelections
+    .map((selection) => latestBySelection.get(selection))
+    .filter(Boolean)
+  const completeness = safeDivide(
+    selections.length,
+    requiredSelections.length,
+    0
+  )
+
+  if (
+    selections.length !== requiredSelections.length ||
+    !allSelectionsShareSnapshot(selections)
+  ) {
+    return {
+      market: sampleRow.market,
+      bookmaker: sampleRow.bookmaker,
+      sourceType: sampleRow.sourceType,
+      capturedAt: null,
+      completeness,
+      selections: [],
+      normalizedProbabilities: null,
+      overround: null,
+      normalizationMethod: null,
+      derivedFromMarket: null
+    }
+  }
+
+  const rawImpliedProbabilities = selections.reduce(
+    (accumulator, selection) => {
+      accumulator[selection.selection] = getRawImpliedProbability(
+        selection.decimalOdds
+      )
+      return accumulator
+    },
+    {}
+  )
+
+  return {
+    market: sampleRow.market,
+    bookmaker: sampleRow.bookmaker,
+    sourceType: sampleRow.sourceType,
+    capturedAt: selections[0].capturedAt,
+    completeness,
+    selections,
+    rawImpliedProbabilities,
+    normalizedProbabilities: null,
+    overround: null,
+    normalizationMethod: 'RAW_IMPLIED',
+    derivedFromMarket: sampleRow.market
+  }
+}
+
+function buildOddsGroup(rows) {
+  const market = rows[0]?.market ?? null
+
+  if (market === 'DOUBLE_CHANCE') {
+    return buildDoubleChanceOddsGroup(rows)
+  }
+
+  return buildExclusiveOddsGroup(rows)
+}
+
+function deriveDoubleChanceProbabilitiesFromMatchResult(
+  matchResultProbabilities = {}
+) {
+  const home = matchResultProbabilities.HOME ?? null
+  const draw = matchResultProbabilities.DRAW ?? null
+  const away = matchResultProbabilities.AWAY ?? null
+
+  if ([home, draw, away].some((value) => !Number.isFinite(value))) {
+    return null
+  }
+
+  return {
+    HOME_OR_DRAW: home + draw,
+    DRAW_OR_AWAY: draw + away,
+    HOME_OR_AWAY: home + away
+  }
+}
+
+function finalizeDoubleChanceGroup(group, groupedMarkets) {
+  if (group.market !== 'DOUBLE_CHANCE' || group.completeness < 1) {
+    return group
+  }
+
+  const matchResultGroup = groupedMarkets.find(
+    (candidate) =>
+      candidate.market === 'MATCH_RESULT' &&
+      candidate.bookmaker === group.bookmaker &&
+      candidate.sourceType === group.sourceType &&
+      candidate.completeness === 1 &&
+      candidate.normalizedProbabilities &&
+      candidate.capturedAt === group.capturedAt
+  )
+
+  if (!matchResultGroup) {
+    return {
+      ...group,
+      normalizedProbabilities: group.rawImpliedProbabilities,
+      overround: null,
+      normalizationMethod: 'RAW_IMPLIED',
+      derivedFromMarket: 'DOUBLE_CHANCE'
+    }
+  }
+
+  const normalizedProbabilities =
+    deriveDoubleChanceProbabilitiesFromMatchResult(
+      matchResultGroup.normalizedProbabilities
+    )
+
+  if (!normalizedProbabilities) {
+    return {
+      ...group,
+      normalizedProbabilities: group.rawImpliedProbabilities,
+      overround: null,
+      normalizationMethod: 'RAW_IMPLIED',
+      derivedFromMarket: 'DOUBLE_CHANCE'
+    }
+  }
+
+  return {
+    ...group,
+    normalizedProbabilities,
+    overround: matchResultGroup.overround,
+    normalizationMethod: 'DERIVED_FROM_MATCH_RESULT',
+    derivedFromMarket: 'MATCH_RESULT'
   }
 }
 
@@ -143,9 +302,12 @@ export function selectPreferredMarketOdds(oddsRows) {
   }
 
   const groupedMarkets = [...groups.values()].map(buildOddsGroup)
+  const resolvedMarkets = groupedMarkets.map((group) =>
+    finalizeDoubleChanceGroup(group, groupedMarkets)
+  )
   const winners = new Map()
 
-  for (const group of groupedMarkets) {
+  for (const group of resolvedMarkets) {
     if (group.completeness < 1 || !group.normalizedProbabilities) {
       continue
     }
@@ -274,6 +436,8 @@ export function scorePredictionSelection({
   sourceType,
   capturedAt,
   overround,
+  normalizationMethod,
+  derivedFromMarket,
   marketCompleteness = 1,
   now = new Date(),
   config = DEFAULT_SCORING_CONFIG
@@ -289,6 +453,7 @@ export function scorePredictionSelection({
   }
 
   const edgePp = (modelProbability - marketProbability) * 100
+  const rawImpliedProbability = getRawImpliedProbability(decimalOdds)
   const dataCompletenessPercent = computeDataCompletenessPercent({
     dataQualityStatus: prediction.dataQuality.status,
     marketCompleteness
@@ -375,6 +540,10 @@ export function scorePredictionSelection({
       decimalOdds,
       capturedAt,
       overround,
+      rawImpliedProbability,
+      fairMarketProbability: marketProbability,
+      normalizationMethod: normalizationMethod ?? 'UNKNOWN',
+      derivedFromMarket: derivedFromMarket ?? market,
       oddsAgeHours: freshness.ageHours,
       dataCoverage: dataCompletenessPercent / 100,
       marketCompleteness,

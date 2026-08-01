@@ -44,6 +44,7 @@ describe('prediction endpoints', () => {
         riskLevel: 'LOW'
       },
       analysis: {
+        historicalCutoff: null,
         expectedGoals: {
           home: 1.84,
           away: 0.91
@@ -67,7 +68,8 @@ describe('prediction endpoints', () => {
         counterFactors: ['Factor 2'],
         warnings: ['Uso responsable'],
         responsibleUseNotice: 'Uso responsable'
-      }
+      },
+      explanationSource: 'OPENAI'
     }
 
     return {
@@ -153,6 +155,8 @@ describe('prediction endpoints', () => {
     expect(detailResponse.status).toBe(200)
     expect(detailResponse.body.data.selection.value).toBe('HOME')
     expect(detailResponse.body.data.analysis.expectedGoals.home).toBe(1.84)
+    expect(detailResponse.body.data.analysis.historicalCutoff).toBeNull()
+    expect(detailResponse.body.data.explanationSource).toBe('OPENAI')
     expect(detailResponse.body.data.explanation.summary).toBe(
       'Explicacion resumida'
     )

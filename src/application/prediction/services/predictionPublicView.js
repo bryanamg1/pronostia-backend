@@ -29,6 +29,7 @@ function toPublicAnalysis(analysis) {
   }
 
   return {
+    historicalCutoff: analysis.inputs?.historicalCutoff ?? null,
     expectedGoals: {
       home: analysis.expectedGoals.home,
       away: analysis.expectedGoals.away
@@ -83,6 +84,8 @@ function toPublicPrediction(prediction, analysis) {
     },
     analysis: toPublicAnalysis(analysis),
     explanation: toPublicExplanation(prediction.explanation),
+    explanationSource: prediction.explanation?.source ?? null,
+    historicalCutoff: analysis?.inputs?.historicalCutoff ?? null,
     isDailyTop: prediction.isDailyTop,
     createdAt: prediction.createdAt,
     updatedAt: prediction.updatedAt

@@ -65,6 +65,61 @@ function createExplainablePrediction(id = 1) {
   }
 }
 
+function createLimitedPrediction(id = 2) {
+  return {
+    ...createExplainablePrediction(id),
+    market: 'DOUBLE_CHANCE',
+    selection: 'HOME_OR_DRAW',
+    modelProbability: 0.90915218,
+    marketProbability: 0.67073171,
+    edgePp: 23.842,
+    confidenceScore: 68,
+    riskLevel: 'HIGH',
+    recommendation: 'NO_RECOMMENDATION',
+    explanation: null,
+    sources: {
+      bookmaker: 'Bet365',
+      sourceType: 'API',
+      decimalOdds: 1.4,
+      capturedAt: '2026-07-31T23:04:16.000Z',
+      oddsAgeHours: 2,
+      overround: 1.08465608,
+      dataCoverage: 0.75,
+      marketCompleteness: 1,
+      rawImpliedProbability: 1 / 1.4,
+      fairMarketProbability: 0.67073171,
+      normalizationMethod: 'DERIVED_FROM_MATCH_RESULT',
+      derivedFromMarket: 'MATCH_RESULT',
+      normalizedProbabilities: {
+        HOME_OR_DRAW: 0.67073171
+      }
+    }
+  }
+}
+
+function createLimitedModelResult() {
+  return {
+    status: 'ok',
+    prediction: {
+      modelVersion: 'historical-first-v1',
+      fixtureId: 44,
+      inputs: {
+        historicalCutoff: '2026-08-01T21:30:00.000Z',
+        sampleSizeHome: 2,
+        sampleSizeAway: 2
+      },
+      expectedGoals: {
+        home: 0.76377358,
+        away: 0.2
+      },
+      dataQuality: {
+        status: 'LIMITED',
+        flags: ['LOW_SAMPLE_HOME', 'LOW_SAMPLE_AWAY']
+      }
+    }
+  }
+}
+
 function createModelResult() {
   return {
     status: 'ok',
@@ -300,6 +355,94 @@ describe('phase 5 explanation services', () => {
     expect(result.prediction.explanation.source).toBe('OPENAI')
     expect(usageRecords).toHaveLength(1)
     expect(usageRecords[0].estimatedCostUsd).toBeGreaterThan(0)
+  })
+
+  test('single explanation can be generated for a persisted prediction without recommendation', async () => {
+    const prediction = createLimitedPrediction()
+    const predictionRepository = {
+      async findPredictionById() {
+        return prediction
+      },
+      async updatePredictionExplanation({ explanation }) {
+        prediction.explanation = explanation
+        return prediction
+      }
+    }
+    const usageRecords = []
+    const useCase = createExplainPredictionUseCase({
+      predictionRepository,
+      generateHistoricalPrediction: async () => createLimitedModelResult(),
+      openAiUsageRepository: {
+        async getUsageSummaryByPeriod() {
+          return {
+            totalCostUsd: 0
+          }
+        },
+        async createUsageRecord(payload) {
+          usageRecords.push(payload)
+          return payload
+        }
+      },
+      openAiClient: {
+        async generateStructuredOutput({ payload }) {
+          expect(
+            payload.warningCandidates.some((value) => value.includes('68/100'))
+          ).toBe(true)
+          expect(
+            payload.counterCandidates.some((value) =>
+              value.includes('ausencia de recomendacion oficial')
+            )
+          ).toBe(true)
+
+          return {
+            id: 'resp_456',
+            model: 'gpt-5-mini',
+            output: {
+              summary: payload.summaryCandidates[0],
+              supportingFactors: payload.supportingCandidates.slice(0, 2),
+              counterFactors: payload.counterCandidates.slice(0, 2),
+              warnings: payload.warningCandidates.slice(0, 2),
+              responsibleUseNotice: payload.responsibleUseNotice
+            },
+            usage: {
+              inputTokens: 900,
+              cachedInputTokens: 0,
+              outputTokens: 140,
+              reasoningTokens: 0
+            }
+          }
+        }
+      },
+      openAiConfig: {
+        configured: true,
+        model: 'gpt-5-mini',
+        budget: {
+          monthlyUsd: 20,
+          alertPercent: 70,
+          degradedPercent: 85,
+          hardLimitPercent: 100
+        },
+        pricing: {
+          inputUsdPer1MTokens: 0.25,
+          cachedInputUsdPer1MTokens: 0.025,
+          outputUsdPer1MTokens: 2
+        }
+      },
+      logger: createTestLogger().logger,
+      now: () => new Date('2026-08-01T03:00:00.000Z')
+    })
+
+    const result = await useCase({
+      predictionId: prediction.id
+    })
+
+    expect(result.status).toBe('ready')
+    expect(result.prediction.explanation.status).toBe(
+      EXPLANATION_STATUSES.READY
+    )
+    expect(usageRecords).toHaveLength(1)
+    expect(result.prediction.confidenceScore).toBe(68)
+    expect(result.prediction.recommendation).toBe('NO_RECOMMENDATION')
   })
 
   test('same prediction cannot be explained concurrently even when force differs', async () => {

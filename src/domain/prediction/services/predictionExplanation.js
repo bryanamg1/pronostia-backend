@@ -71,8 +71,13 @@ function buildSummaryCandidates({
   const homeTeamName = sanitizeExplanationAtom(prediction.fixture.homeTeam.name)
   const awayTeamName = sanitizeExplanationAtom(prediction.fixture.awayTeam.name)
 
+  const recommendationClause =
+    prediction.recommendation === 'CONSIDER'
+      ? `La seleccion ${selectionLabel} entra en consideracion porque el modelo la valora en ${toPercent(prediction.modelProbability)} frente a ${toPercent(prediction.marketProbability)} del mercado.`
+      : `PronostIA identifica ${selectionLabel} como la lectura estadistica principal, pero no emite recomendacion oficial: el modelo la valora en ${toPercent(prediction.modelProbability)} frente a ${toPercent(prediction.marketProbability)} del mercado.`
+
   return [
-    `La seleccion ${selectionLabel} entra en consideracion porque el modelo la valora en ${toPercent(prediction.modelProbability)} frente a ${toPercent(prediction.marketProbability)} del mercado, con confianza ${prediction.confidenceScore}/100.`,
+    `${recommendationClause} La confianza actual es ${prediction.confidenceScore}/100.`,
     `El cruce ${homeTeamName} vs ${awayTeamName} muestra una ventaja estadistica para ${selectionLabel}: edge de ${toRounded(prediction.edgePp, 1)} pp y riesgo ${prediction.riskLevel}.`,
     `La lectura prepartido favorece ${selectionLabel} con una diferencia positiva entre probabilidad propia y mercado, apoyada por el modelo ${modelPrediction.modelVersion}.`
   ]
@@ -92,7 +97,8 @@ function buildSupportingCandidates({
     `La confianza compuesta quedo en ${prediction.confidenceScore}/100 con riesgo ${prediction.riskLevel}.`,
     `La calidad de datos es ${modelPrediction.dataQuality.status} con muestra previa de ${modelPrediction.inputs.sampleSizeHome} partidos del local y ${modelPrediction.inputs.sampleSizeAway} del visitante.`,
     `Los goles esperados proyectados son ${toRounded(modelPrediction.expectedGoals.home)} para ${homeTeamName} y ${toRounded(modelPrediction.expectedGoals.away)} para ${awayTeamName}.`,
-    `La cuota utilizada proviene de ${bookmaker} y fue capturada hace ${toRounded(prediction.sources.oddsAgeHours ?? 0, 1)} horas.`
+    `La cuota utilizada proviene de ${bookmaker} y fue capturada hace ${toRounded(prediction.sources.oddsAgeHours ?? 0, 1)} horas.`,
+    `El metodo de mercado auditado para esta seleccion es ${sanitizeExplanationAtom(prediction.sources.normalizationMethod ?? 'UNKNOWN', 40)}.`
   ]
 
   if (
@@ -121,7 +127,8 @@ function buildCounterCandidates({ prediction, modelPrediction }) {
     `La recomendacion sigue siendo experimental y depende de una ventana historica acotada al corte ${modelPrediction.inputs.historicalCutoff}.`,
     `El mercado puede corregirse antes del kickoff y reducir el edge detectado.`,
     'La senal estadistica no elimina la varianza propia de un partido unico.',
-    `La muestra previa es de ${modelPrediction.inputs.sampleSizeHome}/${modelPrediction.inputs.sampleSizeAway} partidos relevantes, por lo que no representa certeza.`
+    `La muestra previa es de ${modelPrediction.inputs.sampleSizeHome}/${modelPrediction.inputs.sampleSizeAway} partidos relevantes, por lo que no representa certeza.`,
+    'La ausencia de recomendacion oficial indica que la señal no supera todos los criterios internos de publicacion.'
   ]
 
   if (prediction.riskLevel !== 'LOW') {
@@ -144,7 +151,8 @@ function buildWarningCandidates({ prediction, modelPrediction }) {
   const candidates = [
     EXPLANATION_RESPONSIBLE_USE_NOTICE,
     `Fuente de mercado: ${bookmaker}; hora de captura: ${prediction.sources.capturedAt}.`,
-    `El modelo ${prediction.modelVersion} no usa noticias, lesiones ni alineaciones; solo datos historicos y cuotas disponibles.`
+    `El modelo ${prediction.modelVersion} no usa noticias, lesiones ni alineaciones; solo datos historicos y cuotas disponibles.`,
+    `La confianza de ${prediction.confidenceScore}/100 no supera por si sola el umbral de recomendacion automatica.`
   ]
 
   if (modelPrediction.dataQuality.status !== 'SUFFICIENT') {
