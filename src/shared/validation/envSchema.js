@@ -96,6 +96,13 @@ export const runtimeEnvSchema = z.object({
   OPENAI_INPUT_COST_USD_PER_1M_TOKENS: floatString,
   OPENAI_CACHED_INPUT_COST_USD_PER_1M_TOKENS: floatString,
   OPENAI_OUTPUT_COST_USD_PER_1M_TOKENS: floatString,
+  OPENAI_EXPLANATION_BATCH_LIMIT: z
+    .union([z.string(), z.number()])
+    .optional()
+    .transform((value) =>
+      value === undefined || value === null || value === '' ? 5 : Number(value)
+    )
+    .pipe(z.number().int().min(1).max(20)),
   ADMIN_API_TOKEN: z.string().optional().default(''),
   ADMIN_RATE_LIMIT_WINDOW_MS: intString.optional().default(60000),
   ADMIN_RATE_LIMIT_MAX_REQUESTS: intString.optional().default(20)

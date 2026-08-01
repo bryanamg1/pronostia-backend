@@ -113,7 +113,8 @@ export function createApp({
       getPredictionById,
       recordManualOdds,
       explainPrediction,
-      explainTodayPredictions
+      explainTodayPredictions,
+      maxExplainBatchSize: env.openai.explanationBatchLimit
     })
 
     app.use(

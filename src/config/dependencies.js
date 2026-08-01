@@ -267,7 +267,7 @@ export function createDependencies({ env, loggerOverride } = {}) {
   const explainTodayPredictions = createExplainTodayPredictionsUseCase({
     listTodayPredictions: listStoredTodayPredictions,
     explainPrediction,
-    maxBatchSize: env.sports.sync.maxFixtures
+    maxBatchSize: env.openai.explanationBatchLimit
   })
 
   const scheduler = createScheduler({

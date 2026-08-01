@@ -7,9 +7,12 @@ import {
   OPENAI_USAGE_RECORD_STATUSES
 } from '../../domain/prediction/constants/explanationDefaults.js'
 import {
+  buildUnavailableExplanation,
+  buildPublicExplanationContent,
   buildFallbackExplanation,
   buildFinalExplanation,
   buildPredictionExplanationContract,
+  hasMinimumExplanationData,
   validateGeneratedExplanation
 } from '../../domain/prediction/services/predictionExplanation.js'
 import {
@@ -193,9 +196,7 @@ export function createExplainPredictionUseCase({
 
       if (
         !force &&
-        [EXPLANATION_STATUSES.READY, EXPLANATION_STATUSES.FALLBACK].includes(
-          prediction.explanation?.status
-        )
+        prediction.explanation?.status === EXPLANATION_STATUSES.READY
       ) {
         return {
           status: 'already_explained',
@@ -212,6 +213,33 @@ export function createExplainPredictionUseCase({
       }
 
       const referenceDate = now()
+      const hasMinimumData = hasMinimumExplanationData({
+        prediction,
+        modelPrediction: modelResult.prediction
+      })
+
+      if (!hasMinimumData) {
+        const explanation = buildUnavailableExplanation({
+          generatedAt: referenceDate.toISOString(),
+          content: buildPublicExplanationContent({
+            prediction,
+            modelPrediction: modelResult.prediction,
+            explanation: null
+          })
+        })
+        const updatedPrediction =
+          await predictionRepository.updatePredictionExplanation({
+            id: prediction.id,
+            explanation
+          })
+
+        return {
+          status: 'unavailable',
+          prediction: updatedPrediction,
+          budget: null
+        }
+      }
+
       const contract = buildPredictionExplanationContract({
         prediction,
         modelPrediction: modelResult.prediction

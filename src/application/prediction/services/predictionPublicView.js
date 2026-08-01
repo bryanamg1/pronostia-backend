@@ -1,25 +1,72 @@
 import { createChronologicalPredictionEngine } from './chronologicalPredictionEngine.js'
+import {
+  buildPublicExplanationContent,
+  hasMinimumExplanationData
+} from '../../../domain/prediction/services/predictionExplanation.js'
+import {
+  EXPLANATION_SOURCES,
+  EXPLANATION_STATUSES
+} from '../../../domain/prediction/constants/explanationDefaults.js'
 
-function toPublicExplanation(explanation) {
-  if (!explanation) {
+function toPublicMarket(prediction) {
+  const source = prediction.sources ?? {}
+
+  return {
+    bookmaker: source.bookmaker ?? null,
+    sourceType: source.sourceType ?? null,
+    capturedAt: source.capturedAt ?? null,
+    decimalOdds:
+      typeof source.decimalOdds === 'number' ? source.decimalOdds : null,
+    normalizationMethod: source.normalizationMethod ?? null,
+    derivedFromMarket: source.derivedFromMarket ?? null
+  }
+}
+
+function toPublicExplanation({ explanation, prediction, analysis }) {
+  const minimumDataAvailable = hasMinimumExplanationData({
+    prediction,
+    modelPrediction: analysis
+  })
+
+  if (!explanation && !minimumDataAvailable) {
+    return {
+      status: EXPLANATION_STATUSES.UNAVAILABLE,
+      source: null,
+      generatedAt: null,
+      ...buildPublicExplanationContent({
+        prediction,
+        modelPrediction: analysis,
+        explanation: null
+      })
+    }
+  }
+
+  const nextExplanation =
+    explanation ??
+    (minimumDataAvailable
+      ? {
+          status: EXPLANATION_STATUSES.FALLBACK,
+          source: EXPLANATION_SOURCES.DETERMINISTIC_FALLBACK,
+          generatedAt: prediction.updatedAt,
+          content: null
+        }
+      : null)
+
+  if (!nextExplanation) {
     return null
   }
 
-  const content = explanation.content ?? {}
+  const content = buildPublicExplanationContent({
+    prediction,
+    modelPrediction: analysis,
+    explanation: nextExplanation
+  })
 
   return {
-    status: explanation.status ?? null,
-    source: explanation.source ?? null,
-    generatedAt: explanation.generatedAt ?? null,
-    summary: content.summary ?? null,
-    supportingFactors: Array.isArray(content.supportingFactors)
-      ? content.supportingFactors
-      : [],
-    counterFactors: Array.isArray(content.counterFactors)
-      ? content.counterFactors
-      : [],
-    warnings: Array.isArray(content.warnings) ? content.warnings : [],
-    responsibleUseNotice: content.responsibleUseNotice ?? null
+    status: nextExplanation.status ?? null,
+    source: nextExplanation.source ?? null,
+    generatedAt: nextExplanation.generatedAt ?? null,
+    ...content
   }
 }
 
@@ -45,6 +92,12 @@ function toPublicAnalysis(analysis) {
 }
 
 function toPublicPrediction(prediction, analysis) {
+  const publicExplanation = toPublicExplanation({
+    explanation: prediction.explanation,
+    prediction,
+    analysis
+  })
+
   return {
     id: prediction.id,
     fixture: prediction.fixture
@@ -82,9 +135,11 @@ function toPublicPrediction(prediction, analysis) {
       riskLevel: prediction.riskLevel,
       recommendation: prediction.recommendation
     },
+    market: toPublicMarket(prediction),
     analysis: toPublicAnalysis(analysis),
-    explanation: toPublicExplanation(prediction.explanation),
-    explanationSource: prediction.explanation?.source ?? null,
+    explanation: publicExplanation,
+    explanationSource: publicExplanation?.source ?? null,
+    explanationStatus: publicExplanation?.status ?? null,
     historicalCutoff: analysis?.inputs?.historicalCutoff ?? null,
     isDailyTop: prediction.isDailyTop,
     createdAt: prediction.createdAt,

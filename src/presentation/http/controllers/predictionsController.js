@@ -16,7 +16,8 @@ export function createPredictionsController({
   getPredictionById,
   recordManualOdds,
   explainPrediction,
-  explainTodayPredictions
+  explainTodayPredictions,
+  maxExplainBatchSize = 5
 }) {
   return {
     async getTodayPredictions(request, response) {
@@ -109,13 +110,15 @@ export function createPredictionsController({
 
       if (
         limit !== undefined &&
-        (!Number.isInteger(limit) || limit <= 0 || limit > 40)
+        (!Number.isInteger(limit) || limit <= 0 || limit > maxExplainBatchSize)
       ) {
-        throw new ValidationError('limit must be an integer between 1 and 40')
+        throw new ValidationError(
+          `limit must be an integer between 1 and ${maxExplainBatchSize}`
+        )
       }
 
       const result = await explainTodayPredictions({
-        limit: limit ?? 40
+        limit: limit ?? maxExplainBatchSize
       })
 
       response.status(200).json({

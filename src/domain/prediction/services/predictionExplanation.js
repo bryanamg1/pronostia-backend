@@ -34,6 +34,248 @@ function toRounded(value, digits = 2) {
   return Number(value).toFixed(digits)
 }
 
+function isFiniteNumber(value) {
+  return typeof value === 'number' && Number.isFinite(value)
+}
+
+function translateDataQualityStatus(status) {
+  return (
+    {
+      SUFFICIENT: 'suficiente',
+      LIMITED: 'limitada',
+      INSUFFICIENT: 'insuficiente',
+      INVALID: 'no valida'
+    }[status] ?? 'no disponible'
+  )
+}
+
+function translateConfidenceBand(confidenceScore) {
+  if (!isFiniteNumber(confidenceScore)) {
+    return 'no disponible'
+  }
+
+  if (confidenceScore <= 49) {
+    return 'baja'
+  }
+
+  if (confidenceScore <= 69) {
+    return 'media'
+  }
+
+  if (confidenceScore <= 84) {
+    return 'alta'
+  }
+
+  return 'muy alta'
+}
+
+function translateRecommendation(recommendation) {
+  return recommendation === 'CONSIDER'
+    ? 'con recomendacion oficial'
+    : 'sin recomendacion oficial'
+}
+
+function translateRiskLevel(riskLevel) {
+  return (
+    {
+      LOW: 'bajo',
+      MEDIUM: 'medio',
+      HIGH: 'alto'
+    }[riskLevel] ?? 'no disponible'
+  )
+}
+
+function translateQualityFlag(flag) {
+  return (
+    {
+      LOW_SAMPLE_HOME: 'Muestra historica limitada del equipo local.',
+      LOW_SAMPLE_AWAY: 'Muestra historica limitada del equipo visitante.',
+      MISSING_HOME_SPLIT: 'Faltan datos suficientes como local.',
+      MISSING_AWAY_SPLIT: 'Faltan datos suficientes como visitante.'
+    }[flag] ?? sanitizeExplanationAtom(flag, 80)
+  )
+}
+
+function describeMostLikelyOutcome(prediction, modelPrediction) {
+  const probabilities = modelPrediction?.probabilities ?? {}
+  const homeTeamName = sanitizeExplanationAtom(prediction.fixture.homeTeam.name)
+  const awayTeamName = sanitizeExplanationAtom(prediction.fixture.awayTeam.name)
+  const candidates = [
+    {
+      label: `victoria de ${homeTeamName}`,
+      value: probabilities.homeWin
+    },
+    {
+      label: 'empate',
+      value: probabilities.draw
+    },
+    {
+      label: `victoria de ${awayTeamName}`,
+      value: probabilities.awayWin
+    }
+  ].filter((candidate) => isFiniteNumber(candidate.value))
+
+  if (candidates.length === 0) {
+    return null
+  }
+
+  return candidates.sort((left, right) => right.value - left.value)[0]
+}
+
+function buildOutcomeAnalysis({ prediction, modelPrediction }) {
+  const probabilities = modelPrediction?.probabilities ?? {}
+  const primaryOutcome = describeMostLikelyOutcome(prediction, modelPrediction)
+
+  if (!primaryOutcome) {
+    return null
+  }
+
+  return `El escenario mas probable es ${primaryOutcome.label} con ${toPercent(primaryOutcome.value)}. PronostIA reparte el partido en ${toPercent(probabilities.homeWin)} para la victoria local, ${toPercent(probabilities.draw)} para el empate y ${toPercent(probabilities.awayWin)} para la victoria visitante.`
+}
+
+function buildGoalsAnalysis({ prediction, modelPrediction }) {
+  const homeTeamName = sanitizeExplanationAtom(prediction.fixture.homeTeam.name)
+  const awayTeamName = sanitizeExplanationAtom(prediction.fixture.awayTeam.name)
+  const probabilities = modelPrediction?.probabilities ?? {}
+  const totalExpectedGoals =
+    Number(modelPrediction?.expectedGoals?.home ?? 0) +
+    Number(modelPrediction?.expectedGoals?.away ?? 0)
+
+  if (
+    !isFiniteNumber(modelPrediction?.expectedGoals?.home) ||
+    !isFiniteNumber(modelPrediction?.expectedGoals?.away)
+  ) {
+    return null
+  }
+
+  const goalsCandidates = []
+
+  if (
+    isFiniteNumber(probabilities.under25) &&
+    isFiniteNumber(probabilities.over25)
+  ) {
+    goalsCandidates.push(
+      `${toPercent(probabilities.under25)} para menos de 2.5 y ${toPercent(probabilities.over25)} para mas de 2.5`
+    )
+  }
+
+  if (
+    isFiniteNumber(probabilities.bttsYes) &&
+    isFiniteNumber(probabilities.bttsNo)
+  ) {
+    goalsCandidates.push(
+      `${toPercent(probabilities.bttsYes)} para ambos equipos marcan y ${toPercent(probabilities.bttsNo)} para ambos equipos no marcan`
+    )
+  }
+
+  const goalsClause =
+    goalsCandidates.length > 0
+      ? ` El mercado de goles sugiere ${goalsCandidates.join(', ')}.`
+      : ''
+
+  return `PronostIA proyecta ${toRounded(modelPrediction.expectedGoals.home)} goles esperados para ${homeTeamName} y ${toRounded(modelPrediction.expectedGoals.away)} para ${awayTeamName}, con un total esperado de ${toRounded(totalExpectedGoals)}.${goalsClause}`
+}
+
+function buildMarketAnalysis({ prediction }) {
+  const bookmaker = sanitizeExplanationAtom(prediction.sources?.bookmaker, 40)
+  const capturedAt = sanitizeExplanationAtom(prediction.sources?.capturedAt, 40)
+
+  if (
+    !isFiniteNumber(prediction.modelProbability) ||
+    !isFiniteNumber(prediction.marketProbability) ||
+    !isFiniteNumber(prediction.edgePp)
+  ) {
+    return null
+  }
+
+  const traceabilityClause = bookmaker
+    ? ` La referencia utilizada fue ${bookmaker}${
+        capturedAt ? `, capturada en ${capturedAt}` : ''
+      }.`
+    : ''
+
+  return `PronostIA estima ${toPercent(prediction.modelProbability)} para esta seleccion y el mercado refleja ${toPercent(prediction.marketProbability)}. La diferencia estimada es de ${toRounded(prediction.edgePp, 1)} puntos porcentuales.${traceabilityClause} Esta diferencia no garantiza rentabilidad y puede cambiar antes del partido.`
+}
+
+function buildQualityWarning({ prediction, modelPrediction }) {
+  const flags = Array.isArray(modelPrediction?.dataQuality?.flags)
+    ? modelPrediction.dataQuality.flags.map(translateQualityFlag)
+    : []
+  const flagsClause = flags.length > 0 ? ` ${flags.join(' ')}` : ''
+
+  return `La calidad de los datos es ${translateDataQualityStatus(modelPrediction?.dataQuality?.status)} y la confianza visible es ${translateConfidenceBand(prediction.confidenceScore)} (${prediction.confidenceScore}/100). La lectura queda ${translateRecommendation(prediction.recommendation)} y con riesgo ${translateRiskLevel(prediction.riskLevel)}.${flagsClause}`
+}
+
+export function hasMinimumExplanationData({ prediction, modelPrediction }) {
+  return Boolean(
+    prediction?.fixture?.homeTeam?.name &&
+    prediction?.fixture?.awayTeam?.name &&
+    isFiniteNumber(prediction?.confidenceScore) &&
+    isFiniteNumber(prediction?.modelProbability) &&
+    isFiniteNumber(modelPrediction?.expectedGoals?.home) &&
+    isFiniteNumber(modelPrediction?.expectedGoals?.away) &&
+    modelPrediction?.dataQuality?.status
+  )
+}
+
+export function buildPublicExplanationContent({
+  prediction,
+  modelPrediction,
+  explanation = null
+}) {
+  const content = explanation?.content ?? {}
+  const summary =
+    content.summary ??
+    buildSummaryCandidates({
+      prediction,
+      modelPrediction,
+      selectionLabel: describeSelection(prediction)
+    })[0]
+  const supportingFactors = Array.isArray(content.supportingFactors)
+    ? content.supportingFactors
+    : []
+  const counterFactors = Array.isArray(content.counterFactors)
+    ? content.counterFactors
+    : []
+  const warnings = Array.isArray(content.warnings) ? content.warnings : []
+  const responsibleUse =
+    content.responsibleUse ??
+    content.responsibleUseNotice ??
+    EXPLANATION_RESPONSIBLE_USE_NOTICE
+
+  return {
+    summary,
+    outcomeAnalysis:
+      content.outcomeAnalysis ??
+      buildOutcomeAnalysis({
+        prediction,
+        modelPrediction
+      }),
+    goalsAnalysis:
+      content.goalsAnalysis ??
+      buildGoalsAnalysis({
+        prediction,
+        modelPrediction
+      }),
+    marketAnalysis:
+      content.marketAnalysis ??
+      buildMarketAnalysis({
+        prediction
+      }),
+    qualityWarning:
+      content.qualityWarning ??
+      buildQualityWarning({
+        prediction,
+        modelPrediction
+      }),
+    responsibleUse,
+    supportingFactors,
+    counterFactors,
+    warnings,
+    responsibleUseNotice: responsibleUse
+  }
+}
+
 function describeSelection(prediction) {
   const homeTeamName = sanitizeExplanationAtom(prediction.fixture.homeTeam.name)
   const awayTeamName = sanitizeExplanationAtom(prediction.fixture.awayTeam.name)
@@ -165,17 +407,29 @@ function buildWarningCandidates({ prediction, modelPrediction }) {
 }
 
 function buildDeterministicContent({
+  prediction,
+  modelPrediction,
   summaryCandidates,
   supportingCandidates,
   counterCandidates,
   warningCandidates
 }) {
+  const content = buildPublicExplanationContent({
+    prediction,
+    modelPrediction,
+    explanation: {
+      content: {
+        summary: summaryCandidates[0],
+        supportingFactors: supportingCandidates.slice(0, 3),
+        counterFactors: counterCandidates.slice(0, 3),
+        warnings: warningCandidates.slice(0, 3),
+        responsibleUseNotice: EXPLANATION_RESPONSIBLE_USE_NOTICE
+      }
+    }
+  })
+
   return {
-    summary: summaryCandidates[0],
-    supportingFactors: supportingCandidates.slice(0, 3),
-    counterFactors: counterCandidates.slice(0, 3),
-    warnings: warningCandidates.slice(0, 3),
-    responsibleUseNotice: EXPLANATION_RESPONSIBLE_USE_NOTICE
+    ...content
   }
 }
 
@@ -341,6 +595,8 @@ export function buildPredictionExplanationContract({
       })
       .strict(),
     fallbackContent: buildDeterministicContent({
+      prediction,
+      modelPrediction,
       summaryCandidates,
       supportingCandidates,
       counterCandidates,
@@ -407,6 +663,36 @@ export function buildFallbackExplanation({
     model,
     budget,
     content,
+    metadata: {
+      reason
+    }
+  })
+}
+
+export function buildUnavailableExplanation({
+  generatedAt,
+  content,
+  reason = 'MINIMUM_DATA_UNAVAILABLE'
+}) {
+  return buildFinalExplanation({
+    status: EXPLANATION_STATUSES.UNAVAILABLE,
+    source: null,
+    generatedAt,
+    model: null,
+    budget: null,
+    content: {
+      ...content,
+      summary:
+        content?.summary ??
+        'PronostIA no puede construir una explicacion segura con los datos disponibles.',
+      qualityWarning:
+        content?.qualityWarning ??
+        'La explicacion no esta disponible por falta de datos deterministas minimos.',
+      responsibleUse:
+        content?.responsibleUse ?? EXPLANATION_RESPONSIBLE_USE_NOTICE,
+      responsibleUseNotice:
+        content?.responsibleUseNotice ?? EXPLANATION_RESPONSIBLE_USE_NOTICE
+    },
     metadata: {
       reason
     }

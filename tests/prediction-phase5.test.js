@@ -736,7 +736,8 @@ describe('phase 5 explanation services', () => {
     })
     const explainTodayPredictions = createExplainTodayPredictionsUseCase({
       listTodayPredictions: async () => predictions,
-      explainPrediction: useCase
+      explainPrediction: useCase,
+      maxBatchSize: 6
     })
 
     const result = await explainTodayPredictions()
