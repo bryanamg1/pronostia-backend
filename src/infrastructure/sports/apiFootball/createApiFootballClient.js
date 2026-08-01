@@ -1,10 +1,9 @@
 import { InfrastructureError } from '../../../shared/errors/AppError.js'
 import {
   sanitizeHeaders,
+  sanitizeObject,
   toErrorLogPayload
 } from '../../../shared/utils/sanitize.js'
-
-const MAX_429_RETRIES = 2
 
 export function parseRetryAfterMs(value, nowMs = Date.now()) {
   if (!value) {
@@ -43,13 +42,17 @@ export function createApiFootballClient({
   minIntervalMs,
   retryAfterFallbackMs,
   softLimitPercent,
+  timeoutMs = 10000,
+  maxRetries = 2,
   logger,
   fetchImpl = global.fetch,
   sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   nowMs = () => Date.now()
 }) {
   let lastRequestStartedAtMs = null
+  let statusCallsIssued = 0
   let nonStatusCallsIssued = 0
+  let totalHttpAttemptsIssued = 0
   let quota = {
     plan: null,
     current: null,
@@ -69,7 +72,10 @@ export function createApiFootballClient({
       plan: quota.plan,
       current: quota.current,
       limitDay: quota.limitDay,
+      statusCallsIssued,
       nonStatusCallsIssued,
+      totalHttpAttemptsIssued,
+      successfulCallsIssued: statusCallsIssued + nonStatusCallsIssued,
       conservativeCurrent,
       remaining,
       softLimitPercent
@@ -130,7 +136,7 @@ export function createApiFootballClient({
 
     let attempts = 0
 
-    while (attempts <= MAX_429_RETRIES) {
+    while (attempts <= maxRetries) {
       const waitedBeforeCallMs = await waitForNextSlot()
       const url = buildUrl(baseUrl, endpoint, params)
       const startedAtMs = nowMs()
@@ -141,11 +147,27 @@ export function createApiFootballClient({
 
       lastRequestStartedAtMs = startedAtMs
 
-      const response = await fetchImpl(url, {
-        headers: {
-          'x-apisports-key': apiKey
-        }
-      })
+      totalHttpAttemptsIssued += 1
+
+      let response
+
+      try {
+        response = await fetchImpl(url, {
+          headers: {
+            'x-apisports-key': apiKey
+          },
+          signal:
+            typeof AbortSignal?.timeout === 'function'
+              ? AbortSignal.timeout(timeoutMs)
+              : undefined
+        })
+      } catch (error) {
+        throw new InfrastructureError('Sports API request failed', {
+          provider: 'api-football',
+          endpoint,
+          reason: error?.name === 'TimeoutError' ? 'timeout' : 'network_error'
+        })
+      }
       const durationMs = nowMs() - startedAtMs
       const responseText = await response.text()
       const responseHeaders = sanitizeHeaders(response.headers)
@@ -183,7 +205,7 @@ export function createApiFootballClient({
 
         attempts += 1
 
-        if (attempts > MAX_429_RETRIES) {
+        if (attempts > maxRetries) {
           throw new InfrastructureError('Sports API rate limit persisted', {
             provider: 'api-football',
             endpoint,
@@ -194,6 +216,20 @@ export function createApiFootballClient({
 
         await sleep(retryAfterMs)
         continue
+      }
+
+      const providerErrors = data?.errors
+      const hasProviderErrors = Array.isArray(providerErrors)
+        ? providerErrors.length > 0
+        : Boolean(providerErrors) && Object.keys(providerErrors).length > 0
+
+      if (hasProviderErrors) {
+        throw new InfrastructureError('Sports API payload contains errors', {
+          provider: 'api-football',
+          endpoint,
+          reason: 'provider_errors',
+          providerErrors: sanitizeObject(providerErrors)
+        })
       }
 
       if (!response.ok) {
@@ -217,6 +253,7 @@ export function createApiFootballClient({
             ? Number(providerResponse.requests.limit_day)
             : null
         }
+        statusCallsIssued += 1
       } else {
         nonStatusCallsIssued += 1
       }
@@ -281,6 +318,27 @@ export function createApiFootballClient({
       )
     },
 
+    async getHistoricalFixturesByLeagueSeason({
+      leagueId,
+      season,
+      timezone,
+      last = 20
+    }) {
+      return apiGet(
+        'fixtures',
+        {
+          league: leagueId,
+          season,
+          status: 'FT-AET-PEN',
+          timezone,
+          last
+        },
+        {
+          step: `history-last:${leagueId}:${season}:${last}`
+        }
+      )
+    },
+
     async getOddsByDateRange({
       fromDate,
       toDate,
@@ -300,6 +358,19 @@ export function createApiFootballClient({
         },
         {
           step: `odds:${leagueId ?? 'global'}:${fromDate}:${page}`
+        }
+      )
+    },
+
+    async getOddsByFixture({ fixtureId, page = 1 }) {
+      return apiGet(
+        'odds',
+        {
+          fixture: fixtureId,
+          page
+        },
+        {
+          step: `odds-fixture:${fixtureId}:${page}`
         }
       )
     },

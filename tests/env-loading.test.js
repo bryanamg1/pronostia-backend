@@ -177,4 +177,30 @@ describe('environment bootstrap', () => {
       })
     ).toThrow('OPENAI_HARD_LIMIT_PERCENT')
   })
+
+  test('CURRENT_FIXTURES_PROVIDER overrides SPORTS_API_PROVIDER and aliases current window controls', () => {
+    const env = loadEnv({
+      shouldLoadDotenv: false,
+      env: {
+        NODE_ENV: 'development',
+        PORT: '3000',
+        FRONTEND_URL: 'http://localhost:5173',
+        LOG_LEVEL: 'info',
+        TIMEZONE: 'America/Argentina/Buenos_Aires',
+        SCHEDULER_ENABLED: 'false',
+        SCHEDULER_CRON: '0 6 * * *',
+        RATE_LIMIT_WINDOW_MS: '1000',
+        RATE_LIMIT_MAX_REQUESTS: '100',
+        SPORTS_API_PROVIDER: 'legacy-provider',
+        CURRENT_FIXTURES_PROVIDER: 'api-football',
+        CURRENT_FIXTURES_WINDOW_HOURS: '72',
+        CURRENT_FIXTURES_MAX_MATCHES: '12',
+        SPORTS_API_KEY: 'configured'
+      }
+    })
+
+    expect(env.sports.provider).toBe('api-football')
+    expect(env.sports.sync.lookaheadHours).toBe(72)
+    expect(env.sports.sync.maxFixtures).toBe(12)
+  })
 })

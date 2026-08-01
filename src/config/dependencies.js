@@ -20,12 +20,14 @@ import { createRunScheduledSystemCheckUseCase } from '../application/system/runS
 import { createGetFixtureByIdUseCase } from '../application/sports/getFixtureById.js'
 import { createListCompetitionsUseCase } from '../application/sports/listCompetitions.js'
 import { createListTodayFixturesUseCase } from '../application/sports/listTodayFixtures.js'
+import { createRunCurrentPredictionPilotUseCase } from '../application/sports/runCurrentPredictionPilot.js'
 import { createRunScheduledSportsSyncUseCase } from '../application/sports/runScheduledSportsSync.js'
 import { createFixturePublicViewService } from '../application/sports/services/fixturePublicView.js'
 import { createSyncSportsDataUseCase } from '../application/sports/syncSportsData.js'
 import { DEFAULT_PREDICTION_MODEL_CONFIG } from '../domain/prediction/constants/modelDefaults.js'
 import { MySqlReadinessProbe } from './database.js'
 import { createCompetitionRepository } from '../infrastructure/database/repositories/CompetitionRepository.js'
+import { createAnalysisRunRepository } from '../infrastructure/database/repositories/AnalysisRunRepository.js'
 import { createFixtureRepository } from '../infrastructure/database/repositories/FixtureRepository.js'
 import { createHistoricalPredictionRepository } from '../infrastructure/database/repositories/HistoricalPredictionRepository.js'
 import { createManualOddsAuditRepository } from '../infrastructure/database/repositories/ManualOddsAuditRepository.js'
@@ -72,6 +74,7 @@ export function createDependencies({ env, loggerOverride } = {}) {
     logger: loggerHandle.logger
   })
   const systemRunRepository = createSystemRunRepository({ poolManager })
+  const analysisRunRepository = createAnalysisRunRepository({ poolManager })
   const competitionRepository = createCompetitionRepository({ poolManager })
   const teamRepository = createTeamRepository({ poolManager })
   const fixtureRepository = createFixtureRepository({ poolManager })
@@ -98,6 +101,8 @@ export function createDependencies({ env, loggerOverride } = {}) {
         minIntervalMs: env.sports.minIntervalMs,
         retryAfterFallbackMs: env.sports.retryAfterFallbackMs,
         softLimitPercent: env.sports.softLimitPercent,
+        timeoutMs: env.sports.timeoutMs,
+        maxRetries: env.sports.maxRetries,
         logger: loggerHandle.logger
       })
     : null
@@ -119,7 +124,8 @@ export function createDependencies({ env, loggerOverride } = {}) {
     readinessProbe
   })
   const getLatestSystemRun = createGetLatestSystemRunUseCase({
-    systemRunRepository
+    systemRunRepository,
+    analysisRunRepository
   })
   const runScheduledSystemCheck = createRunScheduledSystemCheckUseCase({
     logger: loggerHandle.logger,
@@ -205,6 +211,27 @@ export function createDependencies({ env, loggerOverride } = {}) {
     predictionRepository,
     lookaheadHours: env.sports.sync.lookaheadHours
   })
+  const composedRunCurrentPredictionPilot =
+    createRunCurrentPredictionPilotUseCase({
+      logger: loggerHandle.logger,
+      sportsApiClient,
+      competitionRepository,
+      teamRepository,
+      fixtureRepository,
+      sportsSyncStateRepository,
+      oddsRepository,
+      predictionRepository,
+      systemRunRepository,
+      analysisRunRepository,
+      generateScoredPredictions,
+      distributedLockManager,
+      databaseConfigured: env.database.configured,
+      databaseConfig: env.database,
+      nodeEnv: env.nodeEnv,
+      timezone: env.timezone,
+      maxFixtures: env.sports.sync.maxFixtures,
+      historyMaxPagesPerRun: env.sports.sync.historyMaxPagesPerRun
+    })
   const listStoredTodayPredictions = createListTodayPredictionsUseCase({
     predictionRepository,
     lookaheadHours: env.sports.sync.lookaheadHours
@@ -264,6 +291,7 @@ export function createDependencies({ env, loggerOverride } = {}) {
       getLatestSystemRun,
       runScheduledSystemCheck,
       syncSportsData,
+      runCurrentPredictionPilot: composedRunCurrentPredictionPilot,
       runScheduledSportsSync,
       importHistoricalSeason,
       listCompetitions,

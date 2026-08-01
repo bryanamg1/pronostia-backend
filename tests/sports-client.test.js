@@ -212,6 +212,106 @@ describe('api-football client', () => {
     expect(sleepCalls).toContain(2000)
   })
 
+  test('rejects provider payload errors even when HTTP status is 200', async () => {
+    const { logger } = createTestLogger()
+    const client = createApiFootballClient({
+      baseUrl: 'https://example.test',
+      apiKey: 'secret-token',
+      minIntervalMs: 7000,
+      retryAfterFallbackMs: 65000,
+      softLimitPercent: 80,
+      logger,
+      fetchImpl: async () =>
+        new Response(
+          JSON.stringify({
+            errors: {
+              plan: 'Free plans do not have access to this season'
+            },
+            response: []
+          }),
+          {
+            status: 200
+          }
+        ),
+      nowMs: () => 0,
+      sleep: async () => {}
+    })
+
+    await expect(
+      client.getOddsByFixture({
+        fixtureId: 1589421
+      })
+    ).rejects.toMatchObject({
+      details: {
+        reason: 'provider_errors'
+      }
+    })
+  })
+
+  test('builds fixture odds requests using the fixture parameter', async () => {
+    const { logger } = createTestLogger()
+    const fetchImpl = jest.fn(async () => {
+      return new Response(JSON.stringify({ response: [] }), {
+        status: 200
+      })
+    })
+
+    const client = createApiFootballClient({
+      baseUrl: 'https://example.test',
+      apiKey: 'secret-token',
+      minIntervalMs: 7000,
+      retryAfterFallbackMs: 65000,
+      softLimitPercent: 80,
+      logger,
+      fetchImpl,
+      nowMs: () => 0,
+      sleep: async () => {}
+    })
+
+    await client.getOddsByFixture({
+      fixtureId: 1589421,
+      page: 1
+    })
+
+    const requestedUrl = fetchImpl.mock.calls[0][0].toString()
+    expect(requestedUrl).toContain('fixture=1589421')
+    expect(requestedUrl).not.toContain('league=')
+  })
+
+  test('builds historical league-season requests with last and without page', async () => {
+    const { logger } = createTestLogger()
+    const fetchImpl = jest.fn(async () => {
+      return new Response(JSON.stringify({ response: [] }), {
+        status: 200
+      })
+    })
+
+    const client = createApiFootballClient({
+      baseUrl: 'https://example.test',
+      apiKey: 'secret-token',
+      minIntervalMs: 7000,
+      retryAfterFallbackMs: 65000,
+      softLimitPercent: 80,
+      logger,
+      fetchImpl,
+      nowMs: () => 0,
+      sleep: async () => {}
+    })
+
+    await client.getHistoricalFixturesByLeagueSeason({
+      leagueId: 128,
+      season: 2026,
+      timezone: 'America/Argentina/Buenos_Aires',
+      last: 20
+    })
+
+    const requestedUrl = fetchImpl.mock.calls[0][0].toString()
+    expect(requestedUrl).toContain('league=128')
+    expect(requestedUrl).toContain('season=2026')
+    expect(requestedUrl).toContain('last=20')
+    expect(requestedUrl).not.toContain('page=')
+  })
+
   test('parses retry-after values from seconds and dates', () => {
     expect(parseRetryAfterMs('3', 0)).toBe(3000)
     expect(

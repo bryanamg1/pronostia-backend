@@ -1,3 +1,5 @@
+import { toMySqlDateTime } from '../mysql/sqlValueHelpers.js'
+
 export function createSystemRunRepository({ poolManager }) {
   function mapSystemRunRow(row) {
     if (!row) {
@@ -37,7 +39,13 @@ export function createSystemRunRepository({ poolManager }) {
             updated_at
           ) VALUES (?, ?, ?, ?, ?, NULL, NULL, NOW(), NOW())
         `,
-        [run.runId, run.runType, run.status, run.startedAt, run.finishedAt]
+        [
+          run.runId,
+          run.runType,
+          run.status,
+          toMySqlDateTime(run.startedAt),
+          toMySqlDateTime(run.finishedAt)
+        ]
       )
 
       return run
@@ -66,7 +74,7 @@ export function createSystemRunRepository({ poolManager }) {
             updated_at = NOW()
           WHERE run_id = ?
         `,
-        [status, finishedAt, errorCode, errorMessage, runId]
+        [status, toMySqlDateTime(finishedAt), errorCode, errorMessage, runId]
       )
 
       return {

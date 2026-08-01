@@ -41,9 +41,22 @@ export const runtimeEnvSchema = z.object({
   SCHEDULER_CRON: z.string().min(1),
   RATE_LIMIT_WINDOW_MS: intString,
   RATE_LIMIT_MAX_REQUESTS: intString,
+  CURRENT_FIXTURES_PROVIDER: z.string().optional().default(''),
+  CURRENT_FIXTURES_TIMEOUT_MS: intString.optional().default(10000),
+  CURRENT_FIXTURES_MAX_RETRIES: z
+    .union([z.string(), z.number()])
+    .optional()
+    .transform((value) =>
+      value === undefined || value === null || value === '' ? 2 : Number(value)
+    )
+    .pipe(z.number().int().min(0).max(5)),
+  CURRENT_FIXTURES_WINDOW_HOURS: intString.optional().default(24),
+  CURRENT_FIXTURES_MAX_MATCHES: intString.optional().default(40),
   SPORTS_API_PROVIDER: z.string().min(1),
   SPORTS_API_BASE_URL: z.string().url(),
   SPORTS_API_KEY: z.string().optional().default(''),
+  FOOTBALL_DATA_API_KEY: z.string().optional().default(''),
+  SPORTMONKS_API_TOKEN: z.string().optional().default(''),
   SPORTS_DEFAULT_SEASON: z
     .union([z.string(), z.number()])
     .optional()
